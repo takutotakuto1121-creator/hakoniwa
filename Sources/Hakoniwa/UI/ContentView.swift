@@ -38,10 +38,15 @@ struct ContentView: View {
         VStack(spacing: 10) {
             TopBar(model: model)
             HStack(alignment: .top, spacing: 10) {
-                VStack(spacing: 10) {
-                    ToolPalette(model: model)
-                    GodPalette(model: model)
+                // Scrollable so that short windows never push the layout beyond the window.
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(spacing: 10) {
+                        ToolPalette(model: model)
+                        GodPalette(model: model)
+                    }
                 }
+                .scrollBounceBehavior(.basedOnSize)
+                .fixedSize(horizontal: true, vertical: false)
                 Spacer(minLength: 0)
                 if model.showInspector, model.detail != nil {
                     InspectorPanel(model: model)

@@ -255,18 +255,31 @@ final class AppEnvironment {
         r.captureNextFrame { metal in
             guard let metal else { completion(nil); return }
             let scale = window.backingScaleFactor
-            let w = metal.width, h = metal.height
-            guard let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0,
+            // The canvas covers the whole content view; the Metal frame is placed where its view sits.
+            let w = Int((content.bounds.width * scale).rounded()), h = Int((content.bounds.height * scale).rounded())
+            guard w > 0, h > 0,
+                  let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0,
                                       space: CGColorSpace(name: CGColorSpace.sRGB)!,
                                       bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { completion(nil); return }
-            ctx.draw(metal, in: CGRect(x: 0, y: 0, width: w, height: h))
-            // Render the SwiftUI layer tree on top (the Metal layer itself renders empty here).
             func findMetal(_ v: NSView) -> NSView? {
                 if v is WorldMTKView { return v }
                 for s in v.subviews { if let f = findMetal(s) { return f } }
                 return nil
             }
             let metalView = findMetal(content)
+            var metalRect = CGRect(x: 0, y: 0, width: w, height: h)
+            if let mv = metalView {
+                // Convert to window coordinates (bottom-left origin) and then to canvas pixels.
+                let f = mv.convert(mv.bounds, to: nil)
+                metalRect = CGRect(x: f.minX * scale, y: f.minY * scale, width: f.width * scale, height: f.height * scale)
+            }
+            if ProcessInfo.processInfo.environment["HAKONIWA_DEBUG_CAPTURE"] != nil {
+                print("capture window=\(window.frame) screen=\(window.screen?.visibleFrame ?? .zero) content=\(content.bounds) layer=\(content.layer?.frame ?? .zero) sublayers=\(content.layer?.sublayers?.map { $0.frame } ?? []) metal=\(metalRect) img=\(metal.width)x\(metal.height)")
+            }
+            ctx.setFillColor(CGColor(red: 0, green: 0, blue: 0, alpha: 1))
+            ctx.fill(CGRect(x: 0, y: 0, width: w, height: h))
+            ctx.draw(metal, in: metalRect)
+            // Render the SwiftUI layer tree on top (the Metal layer itself renders empty here).
             let metalLayerWasHidden = metalView?.layer?.isHidden ?? false
             metalView?.layer?.isHidden = true
             defer { metalView?.layer?.isHidden = metalLayerWasHidden }
