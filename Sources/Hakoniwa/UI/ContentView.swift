@@ -11,7 +11,7 @@ struct ContentView: View {
             if model.showPanels {
                 overlay
                     .transition(.opacity)
-            } else {
+            } else if !DemoDirector.shared.isActive && !IntroCoordinator.shared.isPresented {
                 VStack {
                     HStack {
                         Spacer()
@@ -28,7 +28,10 @@ struct ContentView: View {
                 .padding(14)
             }
             ToastView(model: model)
+                .opacity(DemoDirector.shared.isActive ? 0 : 1)
             DuelHost()
+            DemoHost()
+            IntroHost()
         }
         .sheet(isPresented: $model.showNewWorldSheet) { NewWorldSheet(model: model) }
         .animation(.easeOut(duration: 0.2), value: model.showPanels)

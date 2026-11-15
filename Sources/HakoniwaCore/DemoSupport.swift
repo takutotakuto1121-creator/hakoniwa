@@ -171,8 +171,13 @@ extension World {
         scan.highlights += hatches.sorted { $0.score > $1.score }.prefix(perKind)
         scan.highlights += foragers.sorted { $0.score > $1.score }.prefix(perKind)
 
-        // Big carnivores: the largest adults.
-        for (rank, (i, r)) in bigs.sorted(by: { $0.1 > $1.1 }).prefix(perKind).enumerated() {
+        // Big carnivores: the largest adults, when carnivores are an established part of the world
+        // (a lone fresh immigrant is not a story). The rank counts every adult carnivore.
+        var emitted = 0
+        for (rank, (i, r)) in bigs.sorted(by: { $0.1 > $1.1 }).enumerated() where adultCarnivores >= 5 {
+            if emitted >= perKind || rank >= perKind * 3 { break }
+            guard generation[i] >= 5 else { continue }
+            emitted += 1
             var h = make(.bigCarnivore, i, score: r - Float(rank))
             h.groupCount = adultCarnivores
             h.rank = rank + 1
@@ -235,11 +240,15 @@ extension World {
             }
             // A herd stands out only if its own kind dominates the spot.
             let purity = Float(members.count) / Float(max(everyone, 1))
-            guard members.count >= 8, purity >= 0.5 else { continue }
+            // ...and only if it is much denser than its species is on average.
+            let pop = Float(species[Int(sp)].population)
+            let expected = max(pop * .pi * reach * reach / (ws.x * ws.y), 1)
+            let contrast = Float(members.count) / expected
+            guard members.count >= 8, purity >= 0.5, contrast >= 2.5 else { continue }
             if herds.contains(where: { simd_length(torusDelta($0.position - mid, ws)) < reach * 1.5 }) { continue }
             // Anchor on the member closest to the centre so the camera can track a real creature.
             let anchor = members.min { simd_length_squared(torusDelta(pos[$0] - mid, ws)) < simd_length_squared(torusDelta(pos[$1] - mid, ws)) }!
-            var h = make(.herd, anchor, score: Float(members.count) * purity * purity)
+            var h = make(.herd, anchor, score: Float(members.count) * purity * purity * contrast)
             h.position = mid
             h.groupCount = members.count
             h.groupRadius = (spread / Float(members.count)).squareRoot()

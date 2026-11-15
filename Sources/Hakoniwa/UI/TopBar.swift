@@ -124,6 +124,7 @@ struct TopBar: View {
                 model.togglePause()
             }
             iconButton("forward.frame.fill", help: "1ステップ (.)") { model.step() }
+            iconButton("film.stack", help: "デモモード — 見どころをカメラが自動で巡る (⇧⌘D)") { DemoDirector.shared.start() }
             iconButton("flag.2.crossed.fill", help: "世代対決 — 第0世代と進化後を比べる (⌘D)") { DuelCoordinator.shared.open() }
             iconButton("square.split.bottomrightquarter", help: "下のパネル (B)") { model.showBottom.toggle() }
             iconButton("eye.slash", help: "パネルを隠す (H)") { model.showPanels = false }
