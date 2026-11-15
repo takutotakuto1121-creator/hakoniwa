@@ -22,8 +22,8 @@ struct GlassPanel: ViewModifier {
         content
             .background(
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .fill(LinearGradient(colors: [Color(red: 0.05, green: 0.09, blue: 0.13).opacity(0.80),
-                                                  Color(red: 0.02, green: 0.04, blue: 0.07).opacity(0.84)],
+                    .fill(LinearGradient(colors: [Color(red: 0.05, green: 0.09, blue: 0.13).opacity(0.88),
+                                                  Color(red: 0.02, green: 0.04, blue: 0.07).opacity(0.90)],
                                          startPoint: .top, endPoint: .bottom))
             )
             .overlay(

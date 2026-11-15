@@ -35,6 +35,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
+    /// Double-clicked .hkw files.
+    func application(_ application: NSApplication, open urls: [URL]) {
+        if let url = urls.first(where: { $0.pathExtension == "hkw" }) {
+            AppEnvironment.shared.loadWorld(url)
+        }
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         AppEnvironment.shared.controller.stop()
     }

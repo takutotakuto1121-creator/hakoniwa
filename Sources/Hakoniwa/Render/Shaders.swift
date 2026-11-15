@@ -551,9 +551,9 @@ fragment float4 creatureFragment(CreatureOut in [[stage_in]],
     float outside = max(min(b.d, b.fin + 0.2), 0.0);
     float halo = exp(-outside * 3.2) * 0.22 * glowAmt;
     // Signalling creatures pulse a visible ring.
-    float sig = smoothstep(0.45, 1.0, c.signal) * 0.6;
+    float sig = smoothstep(0.55, 1.0, c.signal) * 0.35;
     float ringR = 1.2 + fract(t * 1.2) * 1.2;
-    float sring = smoothstep(0.09, 0.0, abs(length(p - float2(-bodyLength(c) * 0.4, 0.0)) - ringR)) * sig * (1.0 - fract(t * 1.2));
+    float sring = smoothstep(0.06, 0.0, abs(length(p - float2(-bodyLength(c) * 0.4, 0.0)) - ringR)) * sig * (1.0 - fract(t * 1.2));
 
     float3 col = float3(0);
     col += finCol * finCover * 0.8;
