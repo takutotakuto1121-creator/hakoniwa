@@ -8,7 +8,7 @@ struct DuelSetup {
     var evolved: [(Genes, BrainGenome)]
     var config: SimConfig
     var arenaSeed: UInt64
-    var arenaSize: Float = 1300
+    var arenaSize: Float = 1200
     /// Same plant density as the standard foraging assay (600 plants in 2400²).
     var plants: Int { Int((600 * (arenaSize / 2400) * (arenaSize / 2400)).rounded()) }
     var roundSeconds: Float = 120
