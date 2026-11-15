@@ -69,11 +69,13 @@ private final class DynamicBuffer {
 }
 
 final class Renderer: NSObject, MTKViewDelegate {
+    static let logFPS = ProcessInfo.processInfo.environment["HAKONIWA_FPS"] != nil
     let device: MTLDevice
     let queue: MTLCommandQueue
     let camera = Camera()
     let controller: SimulationController
     weak var model: AppModel?
+    weak var view: MTKView?
 
     private var backgroundPipeline: MTLRenderPipelineState!
     private var foodPipeline: MTLRenderPipelineState!
@@ -129,6 +131,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         fd.usage = .shaderRead
         fertilityTexture = device.makeTexture(descriptor: fd)!
         super.init()
+        self.view = view
         view.device = device
         view.colorPixelFormat = .bgra8Unorm_srgb
         view.framebufferOnly = false
@@ -230,7 +233,13 @@ final class Renderer: NSObject, MTKViewDelegate {
         let dt = Float(min(now - lastFrameTime, 0.1))
         lastFrameTime = now
         fpsAccum += Double(dt); fpsFrames += 1
-        if fpsAccum > 0.5 { fps = Double(fpsFrames) / fpsAccum; fpsAccum = 0; fpsFrames = 0 }
+        if fpsAccum > 0.5 {
+            fps = Double(fpsFrames) / fpsAccum; fpsAccum = 0; fpsFrames = 0
+            if Renderer.logFPS {
+                print(String(format: "fps %.1f creatures %d food %d particles %d zoom %.2f", fps, creatureCount, foodCount, particles.count, camera.zoom / camera.pixelRatio))
+                fflush(stdout)
+            }
+        }
         let size = view.drawableSize
         if hdrTexture == nil || hdrTexture!.width != Int(size.width) || hdrTexture!.height != Int(size.height) {
             camera.viewSize = V2(Float(size.width), Float(size.height))
@@ -304,7 +313,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         camera.update(dt: dt)
 
         // Effects.
-        let fxBudget = speed.multiplier > 16 || speed == .max ? 30 : 400
+        let fxBudget = speed == .max ? 4 : (speed.multiplier > 16 ? 8 : (speed.multiplier > 4 ? 40 : 400))
         for e in newFX.prefix(fxBudget) { spawnFX(e) }
         for e in newFX where e.kind == .meteor { spawnFX(e) }
         updateParticles(dt: dt)
@@ -320,11 +329,9 @@ final class Renderer: NSObject, MTKViewDelegate {
         var rings: [GPURing] = []
         let t = Float(now - startTime)
         if let p = selectedPosition {
-            let r = selRad * 3.2 + 8 / camera.zoom * camera.pixelRatio
-            rings.append(GPURing(position: p, radius: r, thickness: 2.0 * camera.pixelRatio,
-                                 color: SIMD4(0.9, 0.95, 1.0, 1.0) * 1.4, dash: 18, spin: 0.6))
-            rings.append(GPURing(position: p, radius: r * 1.18, thickness: 1.0 * camera.pixelRatio,
-                                 color: SIMD4(0.5, 0.8, 1.0, 0.6), dash: 0, spin: 0))
+            let r = selRad * 2.6 + 10 * camera.pixelRatio / camera.zoom
+            rings.append(GPURing(position: p, radius: r, thickness: 1.2 * camera.pixelRatio,
+                                 color: SIMD4(0.55, 0.85, 1.0, 0.9) * 0.9, dash: 14, spin: 0.5))
         }
         if let h = hover {
             rings.append(GPURing(position: h.position, radius: h.radius, thickness: 1.5 * camera.pixelRatio,

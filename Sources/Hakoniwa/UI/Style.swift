@@ -17,19 +17,20 @@ enum Palette {
 struct GlassPanel: ViewModifier {
     var radius: CGFloat = 16
     func body(content: Content) -> some View {
+        // A live backdrop blur over the 60 fps Metal layer costs a lot of GPU time every frame,
+        // so panels use a tinted translucent fill with a soft highlight instead.
         content
             .background(
-                ZStack {
-                    RoundedRectangle(cornerRadius: radius, style: .continuous).fill(Color(red: 0.02, green: 0.05, blue: 0.08).opacity(0.55))
-                    RoundedRectangle(cornerRadius: radius, style: .continuous).fill(.ultraThinMaterial).opacity(0.75)
-                }
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .fill(LinearGradient(colors: [Color(red: 0.05, green: 0.09, blue: 0.13).opacity(0.80),
+                                                  Color(red: 0.02, green: 0.04, blue: 0.07).opacity(0.84)],
+                                         startPoint: .top, endPoint: .bottom))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
                     .strokeBorder(LinearGradient(colors: [Color.white.opacity(0.16), Color.white.opacity(0.04)],
                                                  startPoint: .top, endPoint: .bottom), lineWidth: 1)
             )
-            .shadow(color: .black.opacity(0.35), radius: 18, y: 8)
     }
 }
 

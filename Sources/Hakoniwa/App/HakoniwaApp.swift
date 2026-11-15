@@ -25,6 +25,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         if let path = env.options.screenshot {
             scheduleScreenshot(path: path, env: env)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                let ws = NSApp.windows.map { "\($0.className) visible=\($0.isVisible)" }
+                print("windows: \(ws) renderer=\(env.model.renderer != nil) frames=\(env.model.renderer?.frameCount ?? -1)")
+                fflush(stdout)
+            }
         }
     }
 
@@ -36,6 +41,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func scheduleScreenshot(path: String, env: AppEnvironment) {
         let target = env.options.frames
+        // Drive frames manually: when the window is occluded the display link stops.
+        Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { timer in
+            guard let r = env.model.renderer else { return }
+            if r.frameCount >= target + 2 { timer.invalidate(); return }
+            r.view?.draw()
+        }
         Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { timer in
             guard let r = env.model.renderer, r.frameCount >= target, let window = NSApp.windows.first(where: { $0.isVisible }) else { return }
             timer.invalidate()
@@ -94,7 +105,14 @@ enum KeyHandler {
 @main
 struct HakoniwaApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
-    private let env = AppEnvironment.shared
+    private let env: AppEnvironment
+
+    init() {
+        // Always start with a fresh main window instead of restoring (possibly closed) windows.
+        UserDefaults.standard.set(true, forKey: "ApplePersistenceIgnoreState")
+        UserDefaults.standard.set(false, forKey: "NSQuitAlwaysKeepsWindows")
+        env = AppEnvironment.shared
+    }
 
     var body: some Scene {
         WindowGroup("箱庭") {

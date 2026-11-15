@@ -54,9 +54,10 @@ func downsample<T>(_ a: [T], to n: Int) -> [T] {
 }
 
 private func axisTime(_ seconds: Double) -> String {
-    let s = Int(seconds)
-    if s >= 3600 { return "\(s / 3600)h\(String(format: "%02d", (s % 3600) / 60))" }
-    return "\(s / 60)分"
+    let s = Int(seconds.rounded())
+    if s >= 3600 { return "\(s / 3600):\(String(format: "%02d", (s % 3600) / 60))" }
+    if s >= 600 { return "\(s / 60)分" }
+    return "\(s / 60):\(String(format: "%02d", s % 60))"
 }
 
 struct PopulationChart: View {

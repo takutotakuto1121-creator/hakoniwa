@@ -163,9 +163,9 @@ fragment float4 backgroundFragment(FullscreenOut in [[stage_in]],
     float f = fertility.sample(s, wuv).r;
     float t = u.time;
 
-    float3 abyss = float3(0.0016, 0.0042, 0.0115);
-    float3 lagoon = float3(0.0030, 0.0230, 0.0260);
-    float3 bloomTint = float3(0.0060, 0.0320, 0.0200);
+    float3 abyss = float3(0.0020, 0.0050, 0.0140);
+    float3 lagoon = float3(0.0040, 0.0260, 0.0340);
+    float3 bloomTint = float3(0.0080, 0.0400, 0.0240);
     float3 col = mix(abyss, lagoon, smoothstep(0.02, 0.55, f));
     col = mix(col, bloomTint, smoothstep(0.45, 0.95, f) * 0.6);
 
@@ -176,7 +176,10 @@ fragment float4 backgroundFragment(FullscreenOut in [[stage_in]],
 
     // Drifting caustic light.
     float c = caustic(world * 0.0045 + float2(t * 0.01, -t * 0.007), t * 0.35);
-    col += float3(0.020, 0.050, 0.055) * c * (0.35 + 0.65 * f) * (0.6 + 0.4 * u.season);
+    col += float3(0.020, 0.055, 0.065) * c * (0.45 + 0.75 * f) * (0.7 + 0.3 * u.season);
+    // Broad, slowly drifting light pools.
+    float pools = noise2(world * 0.0012 + float2(t * 0.004, -t * 0.003));
+    col *= 0.75 + 0.6 * pools;
 
     // Faint floating plankton specks.
     float2 g = world * 0.03 + float2(t * 0.05, t * 0.02);
@@ -202,8 +205,8 @@ vertex FoodOut foodVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
                           constant Uniforms &u [[buffer(0)]],
                           const device FoodInstance *food [[buffer(1)]]) {
     FoodInstance f = food[iid];
-    float base = (f.kind < 0.5) ? (1.4 + 1.1 * sqrt(max(f.energy, 0.0) / 40.0))
-                                : (1.3 + 1.0 * sqrt(max(f.energy, 0.0) / 60.0));
+    float base = (f.kind < 0.5) ? (0.9 + 0.8 * sqrt(max(f.energy, 0.0) / 40.0))
+                                : (1.1 + 0.9 * sqrt(max(f.energy, 0.0) / 60.0));
     float px = base * u.zoom;
     float minPx = 1.4 * u.pixelRatio;
     float scale = max(px, minPx) / max(px, 1e-4);
@@ -231,12 +234,13 @@ fragment float4 foodFragment(FoodOut in [[stage_in]], constant Uniforms &u [[buf
         float body = d - 0.85 * lobes;
         float aa = fwidth(body) + 1e-3;
         float core = 1.0 - smoothstep(-aa, aa, body);
-        float pulse = 0.85 + 0.15 * sin(u.time * 1.7 + in.seed * 20.0);
-        float3 green = mix(float3(0.10, 0.95, 0.35), float3(0.45, 1.0, 0.25), in.seed);
+        float pulse = 0.8 + 0.2 * sin(u.time * 1.3 + in.seed * 20.0);
+        float3 green = mix(float3(0.05, 0.75, 0.42), float3(0.42, 0.95, 0.18), in.seed);
+        green = mix(green, float3(0.1, 0.8, 0.75), step(0.85, fract(in.seed * 7.3)) * 0.7);
         float inner = smoothstep(0.85, 0.0, d);
-        col = green * (0.55 + 0.9 * inner) * core * 1.4 * pulse;
-        col += green * exp(-d * d * 0.9) * 0.22 * pulse;
-        alpha = core * 0.6;
+        col = green * (0.35 + 0.75 * inner) * core * 0.95 * pulse;
+        col += green * exp(-d * d * 1.4) * 0.09 * pulse;
+        alpha = core * 0.55;
     } else {
         // Meat: jagged chunk, warm glow.
         float jag = 1.0 + 0.22 * noise2(float2(ang * 2.2, in.seed * 13.0)) - 0.11;
@@ -264,9 +268,9 @@ struct CreatureOut {
 constant float kHeadX = 0.45;
 
 inline int segmentCount(float g) { return 2 + int(min(g * 5.0, 4.0)); }
-inline float segSpacing(float diet) { return mix(0.58, 0.70, diet); }
+inline float segSpacing(float diet) { return mix(0.82, 0.95, diet); }
 inline float bodyLength(CreatureInstance c) { return float(segmentCount(c.segments) - 1) * segSpacing(c.diet); }
-inline float tailLength(CreatureInstance c) { return 0.35 + c.tail * 2.1; }
+inline float tailLength(CreatureInstance c) { return 0.6 + c.tail * 2.4; }
 
 vertex CreatureOut creatureVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
                                   constant Uniforms &u [[buffer(0)]],
@@ -329,11 +333,11 @@ inline BodySample sampleBody(float2 p, CreatureInstance c, float t) {
         float fk = float(k);
         float x = kHeadX - fk * sp;
         float y = sin(phase - fk * 0.95) * amp * fk;
-        float r = (k == 0 ? 0.84 : (1.0 - 0.11 * (fk - 1.0))) * roundness;
+        float r = (k == 0 ? 0.80 : (1.0 - 0.13 * (fk - 1.0))) * roundness;
         if (k == 0) r *= mix(1.0, 0.92, c.diet);
         float2 cc = float2(x, y);
         float ds = length(p - cc) - r;
-        d = (k == 0) ? ds : smin(d, ds, 0.32);
+        d = (k == 0) ? ds : smin(d, ds, 0.22);
         if (ds < bestSeg) { bestSeg = ds; bestC = cc; bestR = r; }
         lastX = x; lastY = y; lastR = r;
     }
@@ -342,7 +346,7 @@ inline BodySample sampleBody(float2 p, CreatureInstance c, float t) {
     float theta = atan2(q.y, q.x);
     float spikes = smoothstep(0.42, 0.9, c.diet);
     d -= spikes * 0.17 * pow(max(0.0, sin(theta * 7.0 + bestC.x * 3.0)), 6.0) * smoothstep(-0.3, 0.2, -q.x * 0.0 + 1.0);
-    d -= (1.0 - c.diet) * 0.035 * sin(theta * 26.0 + t * 7.0 + bestC.x * 9.0);
+    d -= smoothstep(0.3, 0.0, c.diet) * 0.018 * sin(theta * 22.0 + t * 6.0 + bestC.x * 9.0);
 
     // Tail stalk + fan.
     float T = tailLength(c);
@@ -362,7 +366,7 @@ inline BodySample sampleBody(float2 p, CreatureInstance c, float t) {
     }
     float fanStart = 0.45;
     float fanT = smoothstep(fanStart, 1.0, tt);
-    float fanW = (0.12 + 0.75 * c.tail) * fanT * (1.0 - 0.35 * smoothstep(0.92, 1.0, tt));
+    float fanW = (0.2 + 0.9 * c.tail) * fanT * (1.0 - 0.35 * smoothstep(0.92, 1.0, tt));
     float fork = 0.25 * c.diet * fanT;
     float fan = abs(abs(p.y - bend) - fork) - fanW;
     fan = max(fan, abs(tx0 - p.x - T * 0.5) - T * 0.5 - 0.05);
@@ -380,7 +384,7 @@ inline BodySample sampleBody(float2 p, CreatureInstance c, float t) {
             float2 lp = p - anchor;
             float ca = cos(a * fs), sa = sin(a * fs);
             lp = float2(ca * lp.x + sa * lp.y, -sa * lp.x + ca * lp.y);
-            float2 size = float2(0.25 + 0.6 * c.fins, 0.14 + 0.16 * c.fins);
+            float2 size = float2(0.35 + 0.75 * c.fins, 0.16 + 0.2 * c.fins);
             float e = sdEllipse(lp - float2(-size.x * 0.55, fs * size.y * 0.9), size);
             finD = min(finD, e);
         }
@@ -547,8 +551,8 @@ fragment float4 creatureFragment(CreatureOut in [[stage_in]],
     float outside = max(min(b.d, b.fin + 0.2), 0.0);
     float halo = exp(-outside * 3.2) * 0.22 * glowAmt;
     // Signalling creatures pulse a visible ring.
-    float sig = clamp(c.signal, 0.0, 1.0);
-    float ringR = 1.7 + bodyLength(c) * 0.25 + fract(t * 1.2) * 1.2;
+    float sig = smoothstep(0.45, 1.0, c.signal) * 0.6;
+    float ringR = 1.2 + fract(t * 1.2) * 1.2;
     float sring = smoothstep(0.09, 0.0, abs(length(p - float2(-bodyLength(c) * 0.4, 0.0)) - ringR)) * sig * (1.0 - fract(t * 1.2));
 
     float3 col = float3(0);

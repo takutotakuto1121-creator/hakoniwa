@@ -114,7 +114,7 @@ struct InspectorPanel: View {
                 }
             }
             BrainView(detail: d)
-                .frame(height: 400)
+                .frame(height: 370)
         }
     }
 

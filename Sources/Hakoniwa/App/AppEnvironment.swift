@@ -138,8 +138,10 @@ final class AppEnvironment {
             controller.perform { [model] w in
                 let uid = w.creature(near: center, maxDistance: 3000)
                 DispatchQueue.main.async {
+                    print("select-first uid=\(String(describing: uid)) windows=\(NSApp.windows.count)"); fflush(stdout)
                     model.select(uid)
                     model.following = uid != nil
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { print("after select windows=\(NSApp.windows.count)"); fflush(stdout) }
                 }
             }
         }

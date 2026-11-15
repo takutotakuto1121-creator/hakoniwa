@@ -150,6 +150,7 @@ final class SimulationController: @unchecked Sendable {
     private var sentSamples = -1
     private var sentEventId = -1
     private var lastSpeciesSend: CFTimeInterval = 0
+    private var lastSamplesSend: CFTimeInterval = 0
     private var rateWindowStart: CFTimeInterval = CACurrentMediaTime()
     private var rateWindowTicks = 0
     private var simRate: Double = 0
@@ -203,7 +204,7 @@ final class SimulationController: @unchecked Sendable {
                 rateWindowTicks = 0
             }
             if ran > 0 || !cmds.isEmpty { publish(w) }
-            if now - lastUI > 1.0 / 15.0 || forceUI {
+            if now - lastUI > 1.0 / 12.0 || forceUI {
                 lastUI = now
                 sendUI(w, now: now)
             }
@@ -247,9 +248,11 @@ final class SimulationController: @unchecked Sendable {
         var alive = 0
         for s in w.species where s.population > 0 { alive += 1 }
         u.speciesAlive = alive
-        if forceUI || w.samples.count != sentSamples {
+        // Charts are expensive to rebuild, so the history is sent at most once per second.
+        if forceUI || (w.samples.count != sentSamples && now - lastSamplesSend > 1.0) {
             u.samples = w.samples
             sentSamples = w.samples.count
+            lastSamplesSend = now
         }
         let lastEvent = w.events.last?.id ?? -1
         if forceUI || lastEvent != sentEventId {
