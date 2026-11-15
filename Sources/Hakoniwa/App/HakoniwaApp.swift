@@ -155,6 +155,7 @@ enum KeyHandler {
         if let responder = NSApp.keyWindow?.firstResponder, responder is NSText { return false }
         if event.modifierFlags.intersection([.command, .control, .option]).isEmpty == false { return false }
         if DuelCoordinator.shared.handleKey(event) { return true }
+        if TimelapsePlayer.shared.active { return TimelapsePlayer.shared.handleKey(event) }
         let m = env.model
         switch event.keyCode {
         case 49: m.togglePause(); return true                 // space
@@ -183,6 +184,7 @@ enum KeyHandler {
         case "w": m.tool = .wall
         case "e": m.tool = .eraseWall
         case "t": m.bottomTab = .tree; m.showBottom = true
+        case "l": TimelapsePlayer.shared.start()
         default: return false
         }
         return true
@@ -229,6 +231,7 @@ struct HakoniwaApp: App {
                 }
                 Divider()
                 Button("世代対決…") { DuelCoordinator.shared.toggle() }.keyboardShortcut("d")
+                Button("進化のタイムラプス") { TimelapsePlayer.shared.toggle() }.keyboardShortcut("l")
                 Divider()
                 Button("追尾の切り替え") { env.model.following.toggle() }
                 Button("選択を解除") { env.model.select(nil) }

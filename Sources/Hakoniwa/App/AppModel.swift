@@ -52,7 +52,7 @@ enum Tool: String, CaseIterable, Identifiable {
 }
 
 enum BottomTab: String, CaseIterable, Identifiable {
-    case population, traits, tree, events
+    case population, traits, tree, events, story, heroes
     var id: String { rawValue }
     var label: String {
         switch self {
@@ -60,6 +60,8 @@ enum BottomTab: String, CaseIterable, Identifiable {
         case .traits: return "形質の進化"
         case .tree: return "系統樹"
         case .events: return "出来事"
+        case .story: return "伝記"
+        case .heroes: return "英雄"
         }
     }
 }

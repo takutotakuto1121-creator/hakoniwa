@@ -72,7 +72,7 @@ final class WorldMTKView: MTKView {
         let p = convert(event.locationInWindow, from: nil)
         if !dragging && hypot(p.x - start.x, p.y - start.y) > 3 { dragging = true }
         guard dragging, let last = lastDrag else { return }
-        if model?.tool == .food && !event.modifierFlags.contains(.option) {
+        if model?.tool == .food && !TimelapsePlayer.shared.active && !event.modifierFlags.contains(.option) {
             let now = CACurrentMediaTime()
             if now - lastPaint > 0.06, let wp = worldPoint(event) {
                 lastPaint = now
@@ -143,6 +143,7 @@ final class WorldMTKView: MTKView {
     }
 
     private func handleClick(_ event: NSEvent) {
+        if TimelapsePlayer.shared.active { return }  // the live world is not on screen
         guard let model, let r = renderer, let wp = worldPoint(event) else { return }
         let tol = pickTolerance()
         switch model.tool {
@@ -177,6 +178,7 @@ final class WorldMTKView: MTKView {
     }
 
     private func handleDoubleClick(_ event: NSEvent) {
+        if TimelapsePlayer.shared.active { return }
         guard let model, let r = renderer, let wp = worldPoint(event) else { return }
         let tol = pickTolerance() * 1.5
         r.controller.perform { w in

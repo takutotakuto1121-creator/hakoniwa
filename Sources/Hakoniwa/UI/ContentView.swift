@@ -8,7 +8,10 @@ struct ContentView: View {
         ZStack {
             WorldView(model: model)
                 .ignoresSafeArea()
-            if model.showPanels {
+            if TimelapsePlayer.shared.active {
+                TimelapseOverlay(player: TimelapsePlayer.shared)
+                    .transition(.opacity)
+            } else if model.showPanels {
                 overlay
                     .transition(.opacity)
             } else {

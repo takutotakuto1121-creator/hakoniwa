@@ -12,6 +12,7 @@ struct InspectorPanel: View {
                     header(d)
                     vitals(d)
                     if !d.isEgg { VisionToggleRow(model: model, detail: d) }
+                    BiographySection(model: model)
                     brain(d)
                     genes(d)
                     lineage

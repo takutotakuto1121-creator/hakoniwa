@@ -14,21 +14,34 @@ struct TopBar: View {
                 }
             }
             divider
-            Stat(label: "世界の時間", value: formatWorldTime(model.worldSeconds))
-            Stat(label: "最大世代", value: "第\(model.maxGeneration)世代")
-            populationBlock
-            Stat(label: "生きている種", value: "\(model.speciesAlive)種")
-            Stat(label: "季節", value: model.seasonLabel, color: seasonColor)
-            ClimateStat()
-            Spacer(minLength: 8)
-            rateLabel
+            Stat(label: "世界の時間", value: formatWorldTime(model.worldSeconds)).fixedSize()
+            Stat(label: "最大世代", value: "第\(model.maxGeneration)世代").fixedSize()
+            populationBlock.fixedSize()
+            // Secondary information gives way first when the window is narrow.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 18) { speciesStat; seasonStat; ClimateStat(); Spacer(minLength: 8); rateLabel }
+                HStack(spacing: 18) { speciesStat; ClimateStat(); Spacer(minLength: 8); rateLabel }
+                HStack(spacing: 18) { speciesStat; ClimateStat(); Spacer(minLength: 8) }
+                HStack(spacing: 18) { ClimateStat(); Spacer(minLength: 8) }
+                HStack { Spacer(minLength: 8) }
+            }
+            .frame(maxHeight: 40)
             SoundControl()
             speedControl
             controlButtons
         }
+        .lineLimit(1)
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
         .glass(16)
+    }
+
+    private var speciesStat: some View {
+        Stat(label: "生きている種", value: "\(model.speciesAlive)種").fixedSize()
+    }
+
+    private var seasonStat: some View {
+        Stat(label: "季節", value: model.seasonLabel, color: seasonColor).fixedSize()
     }
 
     private var divider: some View {
@@ -125,9 +138,24 @@ struct TopBar: View {
             }
             iconButton("forward.frame.fill", help: "1ステップ (.)") { model.step() }
             iconButton("flag.2.crossed.fill", help: "世代対決 — 第0世代と進化後を比べる (⌘D)") { DuelCoordinator.shared.open() }
-            iconButton("square.split.bottomrightquarter", help: "下のパネル (B)") { model.showBottom.toggle() }
-            iconButton("eye.slash", help: "パネルを隠す (H)") { model.showPanels = false }
-            iconButton("plus.square.on.square", help: "新しい世界 (⌘N)") { model.showNewWorldSheet = true }
+            iconButton("film.stack", help: "進化のタイムラプス (L)") { TimelapsePlayer.shared.start() }
+            Menu {
+                Button("下のパネルを切り替え (B)") { model.showBottom.toggle() }
+                Button("パネルをすべて隠す (H)") { model.showPanels = false }
+                Divider()
+                Button("新しい世界… (⌘N)") { model.showNewWorldSheet = true }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 12.5, weight: .semibold))
+                    .frame(width: 30, height: 28)
+                    .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.white.opacity(0.06)))
+                    .contentShape(Rectangle())
+            }
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help("その他")
         }
     }
 

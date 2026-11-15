@@ -39,6 +39,8 @@ struct LaunchOptions {
     static func shieldFromAppKit() {
         UserDefaults.standard.register(defaults: ["NSTreatUnknownArgumentsAsOpen": "NO"])
     }
+    var timelapse: Double?
+    var timelapsePlay = false
 
     static func parse(_ args: [String]) -> LaunchOptions {
         var o = LaunchOptions()
@@ -63,6 +65,8 @@ struct LaunchOptions {
             case "--sound-test": o.soundTest = next()
             case "--sound": o.sound = true
             case "--record-seconds": o.recordSeconds = next().flatMap { Double($0) } ?? 5
+            case "--timelapse": o.timelapse = next().flatMap { Double($0) }
+            case "--timelapse-play": o.timelapsePlay = true
             case "--tool": o.tool = next().flatMap { Tool(rawValue: $0) }
             case "--center":
                 if let s = next() {
@@ -144,6 +148,7 @@ final class AppEnvironment {
         if let t = options.tool { model.tool = t }
         if options.sound { SoundEngine.shared.enabled = true }
         controller.start()
+        _ = BiographyStore.shared  // starts following the selected creature's life story
     }
 
     func rendererDidLoad(_ r: Renderer) {
@@ -159,6 +164,10 @@ final class AppEnvironment {
         if let c = options.center {
             r.camera.targetCenter = c
             r.camera.center = c
+        }
+        if let f = options.timelapse {
+            let play = options.timelapsePlay
+            DispatchQueue.main.async { TimelapsePlayer.shared.start(seek: f, play: play) }
         }
         if options.selectFirst {
             let center = options.center ?? r.camera.center

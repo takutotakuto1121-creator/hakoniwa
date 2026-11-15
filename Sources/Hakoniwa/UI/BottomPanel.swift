@@ -33,6 +33,8 @@ struct BottomPanel: View {
                 case .traits: TraitsView(model: model)
                 case .tree: PhylogenyView(model: model)
                 case .events: EventsList(model: model)
+                case .story: BiographyPanel(model: model)
+                case .heroes: HallOfFameView(model: model)
                 }
             }
             .frame(height: 200)
