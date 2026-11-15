@@ -11,8 +11,8 @@ final class VideoRecorder: @unchecked Sendable {
     private let queue = DispatchQueue(label: "hakoniwa.recorder")
     private var startTime: CFTimeInterval?
     private var lastTime: CFTimeInterval = -1
-    private let width: Int
-    private let height: Int
+    let width: Int
+    let height: Int
     private(set) var frames = 0
     private var finished = false
 
@@ -73,6 +73,7 @@ final class VideoRecorder: @unchecked Sendable {
             input.markAsFinished()
             writer.finishWriting {
                 let ok = self.writer.status == .completed && self.frames > 0
+                if !ok { NSLog("recording failed: status \(self.writer.status.rawValue) frames \(self.frames) error \(String(describing: self.writer.error))") }
                 DispatchQueue.main.async { completion(ok ? self.url : nil) }
             }
         }

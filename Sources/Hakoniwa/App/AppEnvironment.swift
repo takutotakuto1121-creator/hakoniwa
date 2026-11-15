@@ -237,7 +237,9 @@ final class AppEnvironment {
             let size = r.camera.viewSize
             let url = AppEnvironment.outputFolder(.moviesDirectory).appendingPathComponent("箱庭 \(AppEnvironment.stamp()).mp4")
             do {
-                r.recorder = try VideoRecorder(url: url, width: Int(size.x), height: Int(size.y))
+                // Hardware H.264 rejects full Retina sizes, so frames are scaled to at most 1920 wide.
+                let scale = min(1, 1920 / max(size.x, 1))
+                r.recorder = try VideoRecorder(url: url, width: Int(size.x * scale), height: Int(size.y * scale))
                 model.recording = true
                 model.showToast("録画を開始しました")
             } catch {
