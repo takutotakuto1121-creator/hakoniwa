@@ -33,18 +33,18 @@ if let s = option("--set") {
 }
 
 func header() -> String {
-    "  time    pop  eggs   H/O/C            spp  plants  soil%  gen  intake  s/meal  size  spd  view  conn  starve/kill/old  meat%   tps"
+    "  time    pop  eggs   H/O/C            spp  plants  soil%  gen  intake  s/meal  size  spd  view  conn  starve/kill/old  meat%  meatE%  bodyE% tps"
 }
 
 func line(_ w: World, _ s: StatSample, _ tps: Double) -> String {
     let t = Double(s.tick) / Double(w.config.ticksPerSecond)
     let h = Int(t) / 3600, m = (Int(t) % 3600) / 60
     let soilPct = s.soilEnergy / w.config.totalEnergy * 100
-    return String(format: "%3d:%02d  %5d %5d  %5d/%4d/%4d  %5d  %6d  %5.1f %4d  %6.2f  %6.1f  %.2f %.2f  %.2f %5.1f  %5d/%4d/%4d  %5.1f %6.0f",
+    return String(format: "%3d:%02d  %5d %5d  %5d/%4d/%4d  %5d  %6d  %5.1f %4d  %6.2f  %6.1f  %.2f %.2f  %.2f %5.1f  %5d/%4d/%4d  %5.1f  %5.1f  %5.1f %6.0f",
                   h, m, s.population, s.eggs, s.herbivores, s.omnivores, s.carnivores, s.species, s.plants,
                   soilPct, s.maxGeneration, s.intakeRate, s.secondsPerMeal, s.meanSize, s.meanSpeed,
                   s.meanViewDistance, s.meanConnections, s.deathsStarved, s.deathsKilled, s.deathsOld,
-                  s.meatIntakeShare * 100, tps)
+                  s.meatIntakeShare * 100, s.meatEnergy / w.config.totalEnergy * 100, s.creatureEnergy / w.config.totalEnergy * 100, tps)
 }
 
 switch command {
@@ -120,21 +120,24 @@ case "sweep":
     // Runs several seeds and checks the ecological acceptance criteria.
     let seeds = (option("--seeds") ?? "1,2,3").split(separator: ",").compactMap { UInt64($0) }
     let hours = Double(option("--hours") ?? "2") ?? 2
-    print("seed   pop(min/max/end)   carn% max  carn>=5% longest  max gen  spp  assay x   wall")
+    print("seed   pop(min/max/end)   carn% max  omni% max  meat% end  carn>=5% longest  max gen  spp  assay x   wall")
     for sd in seeds {
         let t0 = Date()
         let w = World(config: config, seed: sd)
         w.step(Int(hours * 3600 * Double(config.ticksPerSecond)))
         let pops = w.samples.map { Int($0.population) }
         let fracs = w.samples.map { Double($0.carnivores) / Double(max($0.population, 1)) }
+        let omni = w.samples.map { Double($0.omnivores) / Double(max($0.population, 1)) }.max() ?? 0
+        let meatShare = Double(w.samples.suffix(30).map { $0.meatIntakeShare }.reduce(0, +)) / 30
         // Longest stretch with carnivores at or above 5% of the population.
         var longest = 0, run = 0
         for f in fracs { run = f >= 0.05 ? run + 1 : 0; longest = max(longest, run) }
         let longestMinutes = Double(longest) * Double(w.sampleInterval) / Double(config.ticksPerSecond) / 60
         let a0 = World.assay(World.primordialGenomes(150, seed: sd, config: config), base: config, seconds: 90)
         let a1 = World.assay(w.sampleGenomes(150), base: config, seconds: 90)
-        print(String(format: "%4d   %5d/%5d/%5d   %6.1f   %9.0f min  %7d  %3d  %6.2f  %5.0fs",
-                     sd, pops.min() ?? 0, pops.max() ?? 0, w.aliveCount, (fracs.max() ?? 0) * 100, longestMinutes,
+        print(String(format: "%4d   %5d/%5d/%5d   %6.1f    %6.1f     %6.1f   %9.0f min  %7d  %3d  %6.2f  %5.0fs",
+                     sd, pops.min() ?? 0, pops.max() ?? 0, w.aliveCount, (fracs.max() ?? 0) * 100, omni * 100,
+                     meatShare * 100, longestMinutes,
                      w.maxGeneration, w.samples.last?.species ?? 0, a1.energyPerMinute / max(a0.energyPerMinute, 1e-9),
                      Date().timeIntervalSince(t0)))
         if let dir = option("--save-dir") {

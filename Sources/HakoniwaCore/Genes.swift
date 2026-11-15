@@ -104,10 +104,11 @@ public struct Phenotype: Sendable {
         let finBoost = 1 + 0.08 * g.fins + 0.05 * g.tail
         maxAccel = (55 + 170 * g.speed) * sizeFactor * finBoost
         maxTurn = (1.6 + 3.8 * g.agility) * sizeFactor * (1 + 0.1 * g.fins)
-        // Close to a linear trade-off with a mild generalist penalty, so that the path
-        // from herbivore to carnivore has no deep fitness valley.
-        plantEfficiency = 0.92 * pow(clamp01(1 - g.diet), 1.15)
-        meatEfficiency = 0.96 * pow(clamp01(g.diet), 1.15)
+        // A concave trade-off: generalists can use both foods, so there is no fitness
+        // valley on the way from herbivore to carnivore. Specialists still do best on
+        // a single food source.
+        plantEfficiency = 0.92 * pow(clamp01(1 - g.diet), 0.75)
+        meatEfficiency = 0.96 * pow(clamp01(g.diet), 0.75)
         biteStrength = 0.2 + 1.6 * g.diet
         lifespan = c.lifespanBase + c.lifespanPerSize * g.size
         eggFraction = 0.08 + 0.24 * g.eggSize

@@ -8,7 +8,7 @@ public struct SimConfig: Codable, Sendable, Equatable {
     public var worldHeight: Float = 4000
     public var ticksPerSecond: Float = 20
     /// Total energy in the closed system.
-    public var totalEnergy: Float = 2_300_000
+    public var totalEnergy: Float = 3_000_000
     public var initialCreatures: Int = 900
     public var minPopulation: Int = 120
     public var maxCreatures: Int = 8192
@@ -29,13 +29,13 @@ public struct SimConfig: Codable, Sendable, Equatable {
 
     // Meat
     public var meatChunk: Float = 60
-    public var meatDecay: Float = 0.012     // fraction per second
+    public var meatDecay: Float = 0.006     // fraction per second
     public var maxMeat: Int = 12000
 
     // Metabolism
     public var energyPerMass: Float = 30
     /// Energy locked in body tissue per unit of mass (released as meat on death).
-    public var bodyPerMass: Float = 10
+    public var bodyPerMass: Float = 15
     public var baseCost: Float = 0.55        // * mass^0.75 per second
     public var moveCost: Float = 0.12        // * mass * thrust^2 per second
     public var turnCost: Float = 0.02
@@ -63,6 +63,8 @@ public struct SimConfig: Codable, Sendable, Equatable {
     // Evolution
     public var speciesThreshold: Float = 2.4
     public var initialConnections: Int = 26
+    /// Number of the 14 primordial lineages that start with a meat-leaning diet gene.
+    public var initialMeatEaterLineages: Int = 3
 
     public init() {}
 

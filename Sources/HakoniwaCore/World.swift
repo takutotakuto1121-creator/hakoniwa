@@ -316,8 +316,11 @@ public final class World {
         let lineages = 14
         let perLineage = max(1, config.initialCreatures / lineages)
         var ancestors: [(Genes, BrainGenome, Int32)] = []
-        for _ in 0..<lineages {
-            let g = Genes.random(&rng)
+        for l in 0..<lineages {
+            var g = Genes.random(&rng)
+            // A few lineages start with omnivorous or carnivorous digestion. This only widens
+            // the initial genetic diversity; no behaviour is given to them.
+            if l >= lineages - config.initialMeatEaterLineages { g.diet = rng.float(0.45, 0.95) }
             let b = BrainOps.randomGenome(&rng, connections: config.initialConnections)
             let sp = newSpecies(parent: -1, genes: g, brain: b)
             ancestors.append((g, b, sp))
@@ -329,12 +332,16 @@ public final class World {
                 var g = g0; g.mutate(&rng)
                 var b = b0; BrainOps.mutate(&b, rate: 0.6, &rng)
                 let p = center + V2(rng.gaussian(), rng.gaussian()) * 500
-                let e = Phenotype(g, config).capacityAdult * 0.25
-                guard soil > e else { break }
+                let e = Phenotype(g, config).capacityAdult * 0.5
+                guard soil > e * 2 else { break }
                 if let i = spawn(genes: g, brain: b, at: p, energy: e, asEgg: false, species: sp, parent: -1, generation: 0) {
                     soil -= e
                     age[i] = rng.float(0, config.maturityAge * 1.2)
+                    rad[i] = radius(i)
                     health[i] = maxHealth(i)
+                    // Primordial creatures start fully grown in tissue, paid for by the soil.
+                    body[i] = config.bodyPerMass * rad[i] * rad[i]
+                    soil -= body[i]
                 }
             }
             species[Int(sp)].established = true
@@ -554,6 +561,7 @@ public final class World {
             var nearestMeat = SIMD8<Float>(repeating: .infinity)
             let fovFull = halfFov >= .pi * 0.999
             var foodSeen = 0
+            let prefersMeat = ph.meatEfficiency > ph.plantEfficiency
             fg.forEachRing(around: p, radius: viewD, { s, e in
                 foodSeen += e - s
                 for k in s..<e {
@@ -581,10 +589,12 @@ public final class World {
             }, shouldStop: { bound in
                 // Stop once each sector's nearest plant is closer than anything still unvisited.
                 // Meat is sparse, so we keep searching only while it could still matter.
+                // Meat-eaters judge completeness by meat, which is sparse, so they search further.
                 if bound < reach { return false }
-                if foodSeen >= 56 { return true }
+                if foodSeen >= (prefersMeat ? 140 : 56) { return true }
                 if !fovFull && bound < viewD * 0.35 { return false }
-                for s in 0..<Brain.sectors where nearestPlant[s] > bound { return false }
+                let target = prefersMeat ? nearestMeat : nearestPlant
+                for s in 0..<Brain.sectors where target[s] > bound { return false }
                 return true
             })
             for s in 0..<Brain.sectors {
@@ -675,7 +685,10 @@ public final class World {
             // Growth: move energy into body tissue up to what the current size requires.
             let bodyTarget = c.bodyPerMass * mass
             if body[i] < bodyTarget && !assayMode {
-                let grow = min(bodyTarget - body[i], max(energy[i] - cost, 0))
+                // Invest only surplus energy, at a bounded rate, keeping a reserve to live on.
+                let reserve = c.energyPerMass * mass * 0.3
+                let rate = bodyTarget * dt / (c.maturityAge * 0.6)
+                let grow = min(bodyTarget - body[i], rate, max(energy[i] - cost - reserve, 0))
                 body[i] += grow
                 energy[i] -= grow
             }
