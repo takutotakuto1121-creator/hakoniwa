@@ -123,6 +123,7 @@ final class AppEnvironment {
         if options.hidePanels { model.showPanels = false }
         if let t = options.tool { model.tool = t }
         controller.start()
+        _ = BiographyStore.shared  // starts following the selected creature's life story
     }
 
     func rendererDidLoad(_ r: Renderer) {

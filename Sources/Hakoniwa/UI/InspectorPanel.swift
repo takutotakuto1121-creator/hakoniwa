@@ -11,6 +11,7 @@ struct InspectorPanel: View {
                 VStack(alignment: .leading, spacing: 14) {
                     header(d)
                     vitals(d)
+                    BiographySection(model: model)
                     brain(d)
                     genes(d)
                     lineage
