@@ -47,6 +47,8 @@ public struct DemoHighlight: Sendable {
     public var share: Float = 0
     /// Hatch: seconds until the egg hatches.
     public var secondsLeft: Float = 0
+    /// Big carnivore: 1 = the largest adult carnivore in the world.
+    public var rank: Int = 0
     /// Higher is more interesting within the same kind.
     public var score: Float = 0
 
@@ -173,6 +175,7 @@ extension World {
         for (rank, (i, r)) in bigs.sorted(by: { $0.1 > $1.1 }).prefix(perKind).enumerated() {
             var h = make(.bigCarnivore, i, score: r - Float(rank))
             h.groupCount = adultCarnivores
+            h.rank = rank + 1
             h.score = Float(perKind - rank)
             scan.highlights.append(h)
         }
@@ -182,7 +185,8 @@ extension World {
             var rare: [DemoHighlight] = []
             for i in 0..<highWater where stage[i] == Stage.alive.rawValue {
                 let g = genes[i]
-                guard g.saturation > 0.55, maturity(i) >= 0.8 else { continue }
+                // Fresh immigrants are trivially rare; show colours that evolved.
+                guard g.saturation > 0.55, maturity(i) >= 0.8, generation[i] >= 5 else { continue }
                 let b = min(Int(g.hue * Float(bins)), bins - 1)
                 let near = hueBins[(b + bins - 1) % bins] + hueBins[b] + hueBins[(b + 1) % bins]
                 let share = Float(near) / Float(coloured)
@@ -217,29 +221,32 @@ extension World {
             guard n >= 8 else { continue }
             let mid = torusWrap(center + sum / Float(n), ws)
             var members: [Int] = []
-            var spread: Float = 0, heading = V2.zero, moving = 0
-            for i in 0..<highWater where stage[i] == Stage.alive.rawValue && speciesOf[i] == sp {
+            var spread: Float = 0, heading = V2.zero, moving = 0, everyone = 0
+            for i in 0..<highWater where stage[i] == Stage.alive.rawValue {
                 let d = torusDelta(pos[i] - mid, ws)
                 let l = simd_length(d)
                 guard l < reach else { continue }
+                everyone += 1
+                guard speciesOf[i] == sp else { continue }
                 members.append(i)
                 spread += l * l
                 let v = vel[i], s = simd_length(v)
                 if s > 4 { heading += v / s; moving += 1 }
             }
-            guard members.count >= 8 else { continue }
+            // A herd stands out only if its own kind dominates the spot.
+            let purity = Float(members.count) / Float(max(everyone, 1))
+            guard members.count >= 8, purity >= 0.5 else { continue }
             if herds.contains(where: { simd_length(torusDelta($0.position - mid, ws)) < reach * 1.5 }) { continue }
             // Anchor on the member closest to the centre so the camera can track a real creature.
             let anchor = members.min { simd_length_squared(torusDelta(pos[$0] - mid, ws)) < simd_length_squared(torusDelta(pos[$1] - mid, ws)) }!
-            var h = make(.herd, anchor, score: Float(members.count))
+            var h = make(.herd, anchor, score: Float(members.count) * purity * purity)
             h.position = mid
             h.groupCount = members.count
             h.groupRadius = (spread / Float(members.count)).squareRoot()
             h.alignment = moving >= 6 ? simd_length(heading) / Float(moving) : 0
             herds.append(h)
-            if herds.count >= perKind { break }
         }
-        scan.highlights += herds
+        scan.highlights += herds.sorted { $0.score > $1.score }.prefix(perKind)
 
         if let k = density.indices.max(by: { density[$0] < density[$1] }) {
             scan.busiestPoint = V2((Float(k % ncx) + 0.5) * cell, (Float(k / ncx) + 0.5) * cell)
