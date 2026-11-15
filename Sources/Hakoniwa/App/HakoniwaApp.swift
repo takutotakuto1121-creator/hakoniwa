@@ -47,6 +47,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// Finish an in-progress recording before quitting so the movie file is complete.
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard let r = AppEnvironment.shared.model.renderer, let rec = r.recorder else { return .terminateNow }
+        r.recorder = nil
+        AppEnvironment.shared.model.recording = false
+        rec.finish { _ in NSApp.reply(toApplicationShouldTerminate: true) }
+        return .terminateLater
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         AppEnvironment.shared.controller.stop()
     }
