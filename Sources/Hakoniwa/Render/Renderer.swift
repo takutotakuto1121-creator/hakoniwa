@@ -542,7 +542,7 @@ final class Renderer: NSObject, MTKViewDelegate {
             }
         case .meteor:
             // Brief flash, then two expanding shock rings and a spray of embers.
-            emit(p, vel: .zero, size: e.size * 0.35, growth: e.size * 0.8, duration: 0.55, color: SIMD3(2.2, 1.2, 0.5), shape: 0, damping: 0)
+            emit(p, vel: .zero, size: e.size * 0.35, growth: e.size * 0.8, duration: 0.5, color: SIMD3(1.5, 0.85, 0.35), shape: 0, damping: 0)
             emit(p, vel: .zero, size: e.size * 0.1, growth: e.size * 2.4, duration: 1.3, color: SIMD3(2.4, 1.2, 0.5), shape: 1, damping: 0)
             emit(p, vel: .zero, size: e.size * 0.1, growth: e.size * 1.5, duration: 1.9, color: SIMD3(0.9, 0.45, 0.2), shape: 1, damping: 0)
             for _ in 0..<260 {

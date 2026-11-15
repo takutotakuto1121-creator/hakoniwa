@@ -10,8 +10,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApp.activate(ignoringOtherApps: true)
         let env = AppEnvironment.shared
+        if env.options.screenshot == nil {
+            NSApp.activate(ignoringOtherApps: true)
+        } else {
+            // Automated capture: stay in the background and ignore stray clicks from the user.
+            DispatchQueue.main.async {
+                for w in NSApp.windows {
+                    w.ignoresMouseEvents = true
+                    w.orderBack(nil)
+                }
+            }
+        }
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             KeyHandler.handle(event, env: env) ? nil : event
         }
