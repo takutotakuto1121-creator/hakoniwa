@@ -121,7 +121,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Drive frames manually: when the window is occluded the display link stops.
         Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { timer in
             guard let r = env.model.renderer else { return }
-            if r.frameCount >= target + 2 { timer.invalidate(); return }
+            // Keep drawing until the app quits: the capture is taken from a frame drawn after the request,
+            // and an occluded window gets no display-link frames.
             if env.options.meteor && !meteorFired && r.frameCount >= max(target - 40, 1) {
                 meteorFired = true
                 let c = r.camera.center
