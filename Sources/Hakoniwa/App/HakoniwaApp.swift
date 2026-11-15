@@ -122,6 +122,8 @@ enum KeyHandler {
         case "c": m.tool = .spawn
         case "x": m.tool = .remove
         case "m": m.tool = .meteor
+        case "w": m.tool = .wall
+        case "e": m.tool = .eraseWall
         case "t": m.bottomTab = .tree; m.showBottom = true
         default: return false
         }

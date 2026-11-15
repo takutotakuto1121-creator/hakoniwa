@@ -84,6 +84,8 @@ final class SimulationController: @unchecked Sendable {
     private var thread: Thread?
     private(set) var publishTime: CFTimeInterval = CACurrentMediaTime()
     private var worldID = 0
+    /// Walls, climate and sickness for the renderer and the god-hand UI.
+    let god = GodBridge()
     /// Delivered on the main thread.
     var onUpdate: ((UIUpdate) -> Void)?
 
@@ -214,6 +216,7 @@ final class SimulationController: @unchecked Sendable {
 
     private func publish(_ w: World) {
         w.fillRender(back)
+        god.capture(w, into: back)
         lock.lock()
         // Effects not yet consumed by the renderer carry over.
         if !front.fx.isEmpty {

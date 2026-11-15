@@ -37,7 +37,10 @@ struct ContentView: View {
         VStack(spacing: 10) {
             TopBar(model: model)
             HStack(alignment: .top, spacing: 10) {
-                ToolPalette(model: model)
+                VStack(spacing: 10) {
+                    ToolPalette(model: model)
+                    GodPalette(model: model)
+                }
                 Spacer(minLength: 0)
                 if model.showInspector, model.detail != nil {
                     InspectorPanel(model: model)

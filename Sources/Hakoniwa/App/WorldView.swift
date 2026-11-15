@@ -12,6 +12,8 @@ final class WorldMTKView: MTKView {
     private var lastDrag: NSPoint?
     private var lastPaint: CFTimeInterval = 0
     private var tracking: NSTrackingArea?
+    /// Last painted point of the current wall stroke.
+    var wallStroke: V2?
 
     override var acceptsFirstResponder: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
@@ -44,8 +46,7 @@ final class WorldMTKView: MTKView {
         guard let model, let r = renderer, let wp = worldPoint(event) else { return }
         let tool = model.tool
         if tool.radius > 0 && tool != .remove {
-            let color: SIMD4<Float> = tool == .meteor ? SIMD4(1.6, 0.5, 0.2, 1) : SIMD4(0.4, 1.4, 0.6, 1)
-            r.hover = (wp, tool.radius, color)
+            r.hover = (wp, tool.radius, tool.cursorColor)
         } else {
             r.hover = nil
         }
@@ -60,6 +61,10 @@ final class WorldMTKView: MTKView {
             handleDoubleClick(event)
             downPoint = nil
         }
+        wallStroke = nil
+        if model?.tool.isWallTool == true, !event.modifierFlags.contains(.option), let wp = worldPoint(event) {
+            beginWallStroke(at: wp)
+        }
     }
 
     override func mouseDragged(with event: NSEvent) {
@@ -73,6 +78,9 @@ final class WorldMTKView: MTKView {
                 lastPaint = now
                 r.controller.perform { w in w.dropFood(at: wp, radius: Tool.food.radius, count: 6) }
             }
+            updateHover(event)
+        } else if wallStroke != nil, let wp = worldPoint(event) {
+            continueWallStroke(to: wp)
             updateHover(event)
         } else {
             let d = V2(Float(p.x - last.x), Float(last.y - p.y)) * scale
@@ -163,6 +171,8 @@ final class WorldMTKView: MTKView {
             }
         case .meteor:
             r.controller.perform { w in w.meteor(at: wp, radius: Tool.meteor.radius) }
+        case .wall, .eraseWall:
+            break  // painted from mouseDown / mouseDragged
         }
     }
 

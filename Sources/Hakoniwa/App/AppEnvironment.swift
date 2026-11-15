@@ -145,6 +145,7 @@ final class AppEnvironment {
                 }
             }
         }
+        GodLaunch.apply(model: model, renderer: r)
     }
 
     // MARK: Actions

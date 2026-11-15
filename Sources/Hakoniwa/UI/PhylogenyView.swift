@@ -24,6 +24,7 @@ struct PhylogenyView: View {
                 Text("\(rows.count)種を表示").font(.system(size: 10, design: .rounded)).foregroundStyle(Palette.textFaint)
                 if let id = model.selectedSpecies, let sp = model.speciesById[id] {
                     SpeciesCard(species: sp, tps: model.ticksPerSecond, now: model.tick)
+                    ReviveSection(model: model, species: sp)
                 } else {
                     Text("線をクリックすると種の詳細を表示").font(.system(size: 10, design: .rounded))
                         .foregroundStyle(Palette.textFaint).fixedSize(horizontal: false, vertical: true)

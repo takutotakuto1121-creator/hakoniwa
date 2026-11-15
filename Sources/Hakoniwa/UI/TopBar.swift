@@ -19,6 +19,7 @@ struct TopBar: View {
             populationBlock
             Stat(label: "生きている種", value: "\(model.speciesAlive)種")
             Stat(label: "季節", value: model.seasonLabel, color: seasonColor)
+            ClimateStat()
             Spacer(minLength: 8)
             rateLabel
             speedControl

@@ -431,6 +431,14 @@ fragment float4 creatureFragment(CreatureOut in [[stage_in]],
     float3 deep = srgbToLinear(hsv2rgb(c.hue + 0.04, min(1.0, sat + 0.15), 0.30));
     float hurt = c.hurt * (0.6 + 0.4 * sin(t * 30.0));
     float glowAmt = 0.35 + 1.1 * energy;
+    // Illness (flag 16): sallow yellow-green colouring and a weak, flickering glow.
+    bool sick = fmod(floor(c.flags / 16.0), 2.0) >= 1.0;
+    if (sick) {
+        float l = max(dot(base, float3(0.3, 0.5, 0.2)), 0.18);
+        base = mix(base, float3(0.36, 0.72, 0.05) * l * 1.5, 0.75);
+        deep = mix(deep, float3(0.035, 0.05, 0.0), 0.7);
+        glowAmt *= 0.5 + 0.3 * sin(t * 3.7 + c.hue * 30.0);
+    }
 
     // LOD: far away creatures are luminous dots.
     float lod = smoothstep(2.0, 5.0, in.pxPerUnit);
@@ -524,6 +532,13 @@ fragment float4 creatureFragment(CreatureOut in [[stage_in]],
     float starving = smoothstep(0.25, 0.0, energy);
     body = mix(body, float3(dot(body, float3(0.3, 0.5, 0.2))) * 0.6, starving * 0.7);
     body = mix(body, float3(1.8, 0.12, 0.06), hurt * 0.65);
+    if (sick) {
+        // Dark lesions and pale pustules.
+        float lesion = smoothstep(0.58, 0.72, noise2(p * 2.8 + c.hue * 53.0));
+        body = mix(body, float3(0.05, 0.06, 0.0), lesion * 0.75 * cover);
+        float pus = smoothstep(0.80, 0.86, noise2(p * 6.0 - c.hue * 17.0));
+        body += float3(0.55, 0.75, 0.10) * pus * (0.6 + 0.4 * sin(t * 5.0 + p.x * 3.0));
+    }
 
     // Eyes.
     float eyeR = 0.15 + 0.2 * c.eyes;
