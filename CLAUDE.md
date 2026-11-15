@@ -22,4 +22,4 @@
 ## 確認方法
 - `make test` / `make app` / `make open`
 - 見た目の確認: `.build/release/Hakoniwa --screenshot PATH [--load W | --seed N --ticks N] [--zoom Z] [--tab NAME] [--frames K] --select-first`
-  (`--screenshot` を先頭に、値を取らないフラグは末尾に置く)。撮った PNG は `sips -Z 1600` で縮小して見る。
+  撮った PNG は `sips -Z 1600` で縮小して見る。
