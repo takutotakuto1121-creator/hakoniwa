@@ -591,9 +591,13 @@ public final class World {
                     let d2 = simd_length_squared(d)
                     if d2 > viewD * viewD { continue }
                     let dist = d2.squareRoot()
-                    if dist < reach && dist < bestFood {
-                        bestFood = dist
-                        foodT = fg.items[k]
+                    if dist < reach {
+                        // Among reachable food, prefer what this creature digests best.
+                        let score = dist - (q.z == 0 ? ph.plantEfficiency : ph.meatEfficiency) * 100
+                        if score < bestFood {
+                            bestFood = score
+                            foodT = fg.items[k]
+                        }
                     }
                     let lx = d.x * ch + d.y * sh
                     let ly = -d.x * sh + d.y * ch
@@ -1009,6 +1013,7 @@ public final class World {
 
     func repopulate() {
         if assayMode { return }
+        immigrate()
         let living = aliveCount + eggCount
         guard living < config.minPopulation else { return }
         // Reseed from the survivors when possible so lineages continue; otherwise start fresh.
@@ -1043,6 +1048,28 @@ public final class World {
         }
         if living == 0 {
             log(.collapse, "生き物が全滅した。新たな生命を播種する")
+        }
+    }
+
+    /// Rarely, a creature with a random genome wanders in from outside the box. Almost all
+    /// of them perish, but they give empty ecological niches a steady chance to be filled.
+    func immigrate() {
+        guard config.immigrationInterval > 0 else { return }
+        let every = Int64(config.immigrationInterval * config.ticksPerSecond)
+        guard tick > 0, tick % every == 0, freeList.count > 64 else { return }
+        var g = Genes.random(&rng)
+        g.diet = rng.float()
+        g.size = rng.float(0.2, 0.8)
+        let b = BrainOps.randomGenome(&rng, connections: config.initialConnections)
+        let e = Phenotype(g, config).capacityAdult * 0.6
+        let p = V2(rng.float(0, config.worldWidth), rng.float(0, config.worldHeight))
+        guard soil > e * 4, !walls.isWall(p) else { return }
+        let sp = newSpecies(parent: -1, genes: g, brain: b)
+        if let i = spawn(genes: g, brain: b, at: p, energy: e, asEgg: false, species: sp, parent: -1, generation: 0) {
+            soil -= e
+            age[i] = config.maturityAge
+            rad[i] = radius(i)
+            health[i] = maxHealth(i)
         }
     }
 

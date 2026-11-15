@@ -65,6 +65,8 @@ public struct SimConfig: Codable, Sendable, Equatable {
     public var initialConnections: Int = 26
     /// Number of the 14 primordial lineages that start with a meat-leaning diet gene.
     public var initialMeatEaterLineages: Int = 3
+    /// Seconds between random immigrants (0 disables immigration).
+    public var immigrationInterval: Float = 15
 
     public init() {}
 
