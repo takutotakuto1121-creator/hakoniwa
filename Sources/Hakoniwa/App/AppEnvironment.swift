@@ -26,6 +26,10 @@ struct LaunchOptions {
     var recordSeconds: Double = 5
     /// Writes the creature card of the selection (use with `--select-first`) to this path, then quits.
     var card: String?
+    /// Renders a scripted sound check to this WAV file, prints levels and quits.
+    var soundTest: String?
+    /// Turns the sound on at launch.
+    var sound = false
 
     /// AppKit pairs up `-key value` arguments as user defaults and treats any argument left over as a
     /// file to open. A value-less flag followed by another option (`--select-first --zoom 2`) leaves `2`
@@ -56,6 +60,8 @@ struct LaunchOptions {
             case "--meteor": o.meteor = true
             case "--record": o.record = next()
             case "--card": o.card = next()
+            case "--sound-test": o.soundTest = next()
+            case "--sound": o.sound = true
             case "--record-seconds": o.recordSeconds = next().flatMap { Double($0) } ?? 5
             case "--tool": o.tool = next().flatMap { Tool(rawValue: $0) }
             case "--center":
@@ -136,6 +142,7 @@ final class AppEnvironment {
         if let t = options.tab { model.bottomTab = t }
         if options.hidePanels { model.showPanels = false }
         if let t = options.tool { model.tool = t }
+        if options.sound { SoundEngine.shared.enabled = true }
         controller.start()
     }
 

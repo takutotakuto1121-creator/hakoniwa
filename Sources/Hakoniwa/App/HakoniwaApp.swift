@@ -11,6 +11,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let env = AppEnvironment.shared
+        if let path = env.options.soundTest {
+            do {
+                print(try SoundEngine.shared.renderOffline(to: URL(fileURLWithPath: path), seconds: 10))
+            } catch {
+                print("sound test failed: \(error)")
+            }
+            fflush(stdout)
+            exit(0)
+        }
         if env.options.screenshot == nil && env.options.record == nil && env.options.card == nil {
             NSApp.activate(ignoringOtherApps: true)
         } else {

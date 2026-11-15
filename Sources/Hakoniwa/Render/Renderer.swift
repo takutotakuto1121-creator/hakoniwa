@@ -322,6 +322,8 @@ final class Renderer: NSObject, MTKViewDelegate {
         let fxBudget = speed == .max ? 4 : (speed.multiplier > 16 ? 8 : (speed.multiplier > 4 ? 40 : 400))
         for e in newFX.prefix(fxBudget) { spawnFX(e) }
         for e in newFX where e.kind == .meteor { spawnFX(e) }
+        SoundEngine.shared.observe(fx: newFX, camera: camera, creatures: cbuf.buffer.contents().bindMemory(to: CreatureInstance.self, capacity: max(creatureCount, 1)),
+                                   count: creatureCount, paused: paused, now: now)
         updateParticles(dt: dt)
         let np = min(particles.count, 20000)
         pbuf.ensure(np * MemoryLayout<GPUParticle>.stride)

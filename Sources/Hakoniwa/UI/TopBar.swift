@@ -21,6 +21,7 @@ struct TopBar: View {
             Stat(label: "季節", value: model.seasonLabel, color: seasonColor)
             Spacer(minLength: 8)
             rateLabel
+            SoundControl()
             speedControl
             controlButtons
         }
