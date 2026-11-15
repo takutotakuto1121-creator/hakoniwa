@@ -116,6 +116,20 @@ case "bench":
         }
     }
 
+case "assay":
+    // Compare evolved creatures from a saved world with primordial ones.
+    let count = Int(option("--count") ?? "200") ?? 200
+    let secs = Float(option("--seconds") ?? "120") ?? 120
+    let primordial = World.primordialGenomes(count, seed: seed, config: config)
+    let base = World.assay(primordial, base: config, seconds: secs)
+    print("generation 0: \(base)")
+    if let path = option("--load") {
+        let w = try World.load(from: URL(fileURLWithPath: path))
+        let evolved = World.assay(w.sampleGenomes(count), base: w.config, seconds: secs)
+        print("evolved (t=\(Int(w.worldTime / 60)) min, max gen \(w.maxGeneration)): \(evolved)")
+        print(String(format: "improvement: %.2fx faster foraging", evolved.energyPerMinute / max(base.energyPerMinute, 1e-9)))
+    }
+
 default:
     print("""
     usage:

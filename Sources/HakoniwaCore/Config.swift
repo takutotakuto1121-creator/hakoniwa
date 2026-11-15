@@ -46,8 +46,8 @@ public struct SimConfig: Codable, Sendable, Equatable {
 
     // Feeding / combat
     public var eatRate: Float = 3.0          // * mass energy per second
-    public var biteDamage: Float = 0.5       // * mass per second, scaled by diet
-    public var biteDrain: Float = 1.2        // energy drained per damage point
+    public var biteDamage: Float = 1.2       // * mass per second, scaled by diet
+    public var biteDrain: Float = 1.5        // energy drained per damage point
     public var healthPerMass: Float = 4
 
     // Life cycle

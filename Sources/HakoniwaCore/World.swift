@@ -112,6 +112,12 @@ public final class World {
     public internal(set) var totalBirths = 0
 
     let dragFactor: Float
+    /// Assay mode: no metabolism, ageing, reproduction or predation; constant plant density.
+    var assayMode = false
+    var assayPlants = 0
+    var assayEaten: Double = 0
+    var assayRng = RNG(seed: 0)
+
     /// Creatures sense and think every `thinkInterval` ticks (staggered by slot).
     public var thinkInterval = 2
 
@@ -648,13 +654,14 @@ public final class World {
             let s1 = max(out[Brain.outSignal1], 0), s2 = max(out[Brain.outSignal2], 0)
             signal1[i] = s1; signal2[i] = s2
             var cost = c.baseCost * pow(mass, 0.75)
-            cost += c.moveCost * mass * thrust * thrust
+            cost += c.moveCost * mass * thrust * thrust * (0.35 + 1.3 * genes[i].speed)
             cost += c.turnCost * mass * turn * turn
             cost += ph.visionCost
             cost += c.brainCost * Float(connCount[i])
             cost += c.signalCost * (s1 + s2)
             if bite > 0 && biteTarget[i] >= 0 { cost += c.biteCost * mass * bite }
             cost *= dt
+            if assayMode { cost = 0 }
             let mh = c.healthPerMass * mass
             if health[i] < mh && energy[i] > cost {
                 let dh = min(mh - health[i], c.healthRegen * mh * dt)
@@ -670,7 +677,7 @@ public final class World {
                 lost[i] = cost
                 energy[i] = e - cost
             }
-            age[i] += dt
+            if !assayMode { age[i] += dt }
             hurt[i] *= 0.9
         }
     }
@@ -693,7 +700,8 @@ public final class World {
             // Eating
             let eat = out[Brain.outEat]
             let f = Int(foodTarget[i])
-            if eat > 0 && f >= 0 && foodEnergy[f] > 0 {
+            if eat > 0 && f >= 0 && f < foodCount && foodEnergy[f] > 0
+                && simd_length_squared(torusDelta(foodPos[f] - pos[i], c.worldSize)) < (rad[i] + 6) * (rad[i] + 6) {
                 let kind = foodKind[f]
                 let eff = kind == 0 ? ph.plantEfficiency : ph.meatEfficiency
                 let cap = capacityOf(i)
@@ -706,6 +714,7 @@ public final class World {
                         take = gain / eff
                     }
                     foodEnergy[f] -= take
+                    if assayMode && kind == 0 { assayEaten += Double(take) }
                     energy[i] += gain
                     soil += take - gain
                     eaten[i] += gain
@@ -720,10 +729,12 @@ public final class World {
                     }
                 }
             }
+            if assayMode { energy[i] = capacityOf(i) * 0.5; continue }
             // Biting
             let bite = out[Brain.outBite]
             let t = Int(biteTarget[i])
-            if bite > 0 && t >= 0 && stage[t] != 0 && t != i {
+            if bite > 0 && t >= 0 && stage[t] != 0 && t != i
+                && simd_length(torusDelta(pos[t] - pos[i], c.worldSize)) < rad[i] + rad[t] + 5 {
                 let r = radius(i)
                 let dmg = c.biteDamage * r * r * ph.biteStrength * bite * dt
                 health[t] -= dmg
@@ -782,6 +793,7 @@ public final class World {
     // MARK: Phase 5: lifecycle and environment
 
     func lifecycle() {
+        if assayMode { return }
         let n = highWater
         for i in 0..<n {
             let st = stage[i]
@@ -864,6 +876,18 @@ public final class World {
             }
         }
         if foodRemoved { compactFood() }
+        if assayMode {
+            // Constant, uniform plant density; positions drawn from a dedicated stream.
+            while plantCount < assayPlants && foodCount < foodCapacity {
+                let k = foodCount
+                foodPos[k] = V2(assayRng.float(0, config.worldWidth), assayRng.float(0, config.worldHeight))
+                foodEnergy[k] = config.plantEnergy
+                foodKind[k] = 0
+                foodCount += 1
+                plantCount += 1
+            }
+            return
+        }
         // Plants grow from soil.
         if soil > 0 {
             plantAccumulator += soil * c.plantGrowth * seasonFactor * dt
@@ -877,20 +901,34 @@ public final class World {
     }
 
     func compactFood() {
+        // Remap table so that food targets held between thinking ticks stay valid.
+        let remap = UnsafeMutablePointer<Int32>.allocate(capacity: max(foodCount, 1))
+        defer { remap.deallocate() }
         var w = 0
-        for k in 0..<foodCount where foodEnergy[k] > 0 {
-            if w != k {
-                foodPos[w] = foodPos[k]
-                foodEnergy[w] = foodEnergy[k]
-                foodKind[w] = foodKind[k]
+        for k in 0..<foodCount {
+            if foodEnergy[k] > 0 {
+                if w != k {
+                    foodPos[w] = foodPos[k]
+                    foodEnergy[w] = foodEnergy[k]
+                    foodKind[w] = foodKind[k]
+                }
+                remap[k] = Int32(w)
+                w += 1
+            } else {
+                remap[k] = -1
             }
-            w += 1
+        }
+        let oldCount = foodCount
+        for i in 0..<highWater where stage[i] != 0 {
+            let f = Int(foodTarget[i])
+            if f >= 0 { foodTarget[i] = f < oldCount ? remap[f] : -1 }
         }
         foodCount = w
         foodRemoved = false
     }
 
     func repopulate() {
+        if assayMode { return }
         let living = aliveCount + eggCount
         guard living < config.minPopulation else { return }
         // Reseed from the survivors when possible so lineages continue; otherwise start fresh.

@@ -134,6 +134,7 @@ extension World {
         w.raw(conns, n * Brain.maxConnections); w.raw(connCount, n); w.raw(connSplit, n)
         w.raw(biases, n * Brain.biasCount); w.raw(hiddenState, n * Brain.hidden)
         w.raw(outputs, n * Brain.outputs)
+        w.raw(biteTarget, n); w.raw(foodTarget, n); w.raw(inputs, n * Brain.inputs); w.raw(rad, n)
         let f = foodCount
         w.raw(foodPos, f); w.raw(foodEnergy, f); w.raw(foodKind, f)
         let body = try (w.data as NSData).compressed(using: .lzfse) as Data
@@ -179,12 +180,14 @@ extension World {
         try b.raw(into: w.connSplit, n)
         try b.raw(into: w.biases, n * Brain.biasCount); try b.raw(into: w.hiddenState, n * Brain.hidden)
         try b.raw(into: w.outputs, n * Brain.outputs)
+        try b.raw(into: w.biteTarget, n); try b.raw(into: w.foodTarget, n)
+        try b.raw(into: w.inputs, n * Brain.inputs); try b.raw(into: w.rad, n)
         let f = meta.foodCount
         try b.raw(into: w.foodPos, f); try b.raw(into: w.foodEnergy, f); try b.raw(into: w.foodKind, f)
+        w.tick = meta.tick
         for i in 0..<n where w.stage[i] != 0 {
             w.pheno[i] = Phenotype(w.genes[i], meta.config)
         }
-        w.tick = meta.tick
         w.rng = meta.rng
         w.nextUid = meta.nextUid
         w.soil = meta.soil

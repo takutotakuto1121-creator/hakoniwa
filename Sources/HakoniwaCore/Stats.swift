@@ -62,7 +62,7 @@ extension World {
         let a = Double(max(alive, 1))
         let creatureSeconds = window.creatureTicks / Double(config.ticksPerSecond)
         let intakeRate = creatureSeconds > 0 ? Float(Double(window.intake) / creatureSeconds) : 0
-        let livingSpecies = species.reduce(Int32(0)) { $0 + ($1.isAlive && $1.population > 0 ? 1 : 0) }
+        let livingSpecies = species.reduce(Int32(0)) { $0 + ($1.established && $1.population > 0 ? 1 : 0) }
         let s = StatSample(
             tick: tick,
             population: Int32(aliveCount), eggs: Int32(eggCount),

@@ -1,7 +1,8 @@
-.DS_Store
 .build/
+.DS_Store
 .swiftpm/
-/build/
 *.app
-/out/
 *.xcodeproj/xcuserdata/
+/build/
+/out/
+/.claude/
