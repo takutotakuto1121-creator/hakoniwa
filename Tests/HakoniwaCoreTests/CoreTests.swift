@@ -333,3 +333,15 @@ final class FeatureTests: XCTestCase {
         XCTAssertEqual(a.arenaGathered, b.arenaGathered)
     }
 }
+
+final class CompatibilityTests: XCTestCase {
+    func testConfigDecodingToleratesMissingKeys() throws {
+        let json = #"{"worldWidth": 1234, "totalEnergy": 99}"#
+        let c = try JSONDecoder().decode(SimConfig.self, from: Data(json.utf8))
+        XCTAssertEqual(c.worldWidth, 1234)
+        XCTAssertEqual(c.totalEnergy, 99)
+        XCTAssertEqual(c.immigrationInterval, SimConfig().immigrationInterval)
+        let round = try JSONDecoder().decode(SimConfig.self, from: JSONEncoder().encode(SimConfig.small))
+        XCTAssertEqual(round, SimConfig.small)
+    }
+}

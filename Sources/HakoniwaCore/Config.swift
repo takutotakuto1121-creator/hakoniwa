@@ -70,6 +70,151 @@ public struct SimConfig: Codable, Sendable, Equatable {
 
     public init() {}
 
+    // Decoding tolerates missing keys (older files) by keeping the defaults.
+    enum CodingKeys: String, CodingKey {
+        case worldWidth
+        case worldHeight
+        case ticksPerSecond
+        case totalEnergy
+        case initialCreatures
+        case minPopulation
+        case maxCreatures
+        case drag
+        case collisionStiffness
+        case plantEnergy
+        case maxPlants
+        case plantGrowth
+        case seasonPeriod
+        case seasonAmplitude
+        case fertilityDriftPeriod
+        case fertilityContrast
+        case meatChunk
+        case meatDecay
+        case maxMeat
+        case energyPerMass
+        case bodyPerMass
+        case baseCost
+        case moveCost
+        case turnCost
+        case visionCost
+        case brainCost
+        case biteCost
+        case signalCost
+        case healthRegen
+        case regenCost
+        case eatRate
+        case biteDamage
+        case biteDrain
+        case healthPerMass
+        case maturityAge
+        case lifespanBase
+        case lifespanPerSize
+        case eggHatchTime
+        case eggReserve
+        case hearingRange
+        case speciesThreshold
+        case initialConnections
+        case initialMeatEaterLineages
+        case immigrationInterval
+    }
+
+    public init(from decoder: Decoder) throws {
+        self.init()
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        if let v = try c.decodeIfPresent(Float.self, forKey: .worldWidth) { worldWidth = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .worldHeight) { worldHeight = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .ticksPerSecond) { ticksPerSecond = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .totalEnergy) { totalEnergy = v }
+        if let v = try c.decodeIfPresent(Int.self, forKey: .initialCreatures) { initialCreatures = v }
+        if let v = try c.decodeIfPresent(Int.self, forKey: .minPopulation) { minPopulation = v }
+        if let v = try c.decodeIfPresent(Int.self, forKey: .maxCreatures) { maxCreatures = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .drag) { drag = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .collisionStiffness) { collisionStiffness = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .plantEnergy) { plantEnergy = v }
+        if let v = try c.decodeIfPresent(Int.self, forKey: .maxPlants) { maxPlants = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .plantGrowth) { plantGrowth = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .seasonPeriod) { seasonPeriod = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .seasonAmplitude) { seasonAmplitude = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .fertilityDriftPeriod) { fertilityDriftPeriod = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .fertilityContrast) { fertilityContrast = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .meatChunk) { meatChunk = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .meatDecay) { meatDecay = v }
+        if let v = try c.decodeIfPresent(Int.self, forKey: .maxMeat) { maxMeat = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .energyPerMass) { energyPerMass = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .bodyPerMass) { bodyPerMass = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .baseCost) { baseCost = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .moveCost) { moveCost = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .turnCost) { turnCost = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .visionCost) { visionCost = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .brainCost) { brainCost = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .biteCost) { biteCost = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .signalCost) { signalCost = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .healthRegen) { healthRegen = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .regenCost) { regenCost = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .eatRate) { eatRate = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .biteDamage) { biteDamage = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .biteDrain) { biteDrain = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .healthPerMass) { healthPerMass = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .maturityAge) { maturityAge = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .lifespanBase) { lifespanBase = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .lifespanPerSize) { lifespanPerSize = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .eggHatchTime) { eggHatchTime = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .eggReserve) { eggReserve = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .hearingRange) { hearingRange = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .speciesThreshold) { speciesThreshold = v }
+        if let v = try c.decodeIfPresent(Int.self, forKey: .initialConnections) { initialConnections = v }
+        if let v = try c.decodeIfPresent(Int.self, forKey: .initialMeatEaterLineages) { initialMeatEaterLineages = v }
+        if let v = try c.decodeIfPresent(Float.self, forKey: .immigrationInterval) { immigrationInterval = v }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(worldWidth, forKey: .worldWidth)
+        try c.encode(worldHeight, forKey: .worldHeight)
+        try c.encode(ticksPerSecond, forKey: .ticksPerSecond)
+        try c.encode(totalEnergy, forKey: .totalEnergy)
+        try c.encode(initialCreatures, forKey: .initialCreatures)
+        try c.encode(minPopulation, forKey: .minPopulation)
+        try c.encode(maxCreatures, forKey: .maxCreatures)
+        try c.encode(drag, forKey: .drag)
+        try c.encode(collisionStiffness, forKey: .collisionStiffness)
+        try c.encode(plantEnergy, forKey: .plantEnergy)
+        try c.encode(maxPlants, forKey: .maxPlants)
+        try c.encode(plantGrowth, forKey: .plantGrowth)
+        try c.encode(seasonPeriod, forKey: .seasonPeriod)
+        try c.encode(seasonAmplitude, forKey: .seasonAmplitude)
+        try c.encode(fertilityDriftPeriod, forKey: .fertilityDriftPeriod)
+        try c.encode(fertilityContrast, forKey: .fertilityContrast)
+        try c.encode(meatChunk, forKey: .meatChunk)
+        try c.encode(meatDecay, forKey: .meatDecay)
+        try c.encode(maxMeat, forKey: .maxMeat)
+        try c.encode(energyPerMass, forKey: .energyPerMass)
+        try c.encode(bodyPerMass, forKey: .bodyPerMass)
+        try c.encode(baseCost, forKey: .baseCost)
+        try c.encode(moveCost, forKey: .moveCost)
+        try c.encode(turnCost, forKey: .turnCost)
+        try c.encode(visionCost, forKey: .visionCost)
+        try c.encode(brainCost, forKey: .brainCost)
+        try c.encode(biteCost, forKey: .biteCost)
+        try c.encode(signalCost, forKey: .signalCost)
+        try c.encode(healthRegen, forKey: .healthRegen)
+        try c.encode(regenCost, forKey: .regenCost)
+        try c.encode(eatRate, forKey: .eatRate)
+        try c.encode(biteDamage, forKey: .biteDamage)
+        try c.encode(biteDrain, forKey: .biteDrain)
+        try c.encode(healthPerMass, forKey: .healthPerMass)
+        try c.encode(maturityAge, forKey: .maturityAge)
+        try c.encode(lifespanBase, forKey: .lifespanBase)
+        try c.encode(lifespanPerSize, forKey: .lifespanPerSize)
+        try c.encode(eggHatchTime, forKey: .eggHatchTime)
+        try c.encode(eggReserve, forKey: .eggReserve)
+        try c.encode(hearingRange, forKey: .hearingRange)
+        try c.encode(speciesThreshold, forKey: .speciesThreshold)
+        try c.encode(initialConnections, forKey: .initialConnections)
+        try c.encode(initialMeatEaterLineages, forKey: .initialMeatEaterLineages)
+        try c.encode(immigrationInterval, forKey: .immigrationInterval)
+    }
+
     public var dt: Float { 1 / ticksPerSecond }
     public var worldSize: V2 { V2(worldWidth, worldHeight) }
 
