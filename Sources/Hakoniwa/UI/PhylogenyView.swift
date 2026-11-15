@@ -23,15 +23,17 @@ struct PhylogenyView: View {
                 .controlSize(.mini)
                 Text("\(rows.count)種を表示").font(.system(size: 10, design: .rounded)).foregroundStyle(Palette.textFaint)
                 if let id = model.selectedSpecies, let sp = model.speciesById[id] {
-                    SpeciesCard(species: sp, tps: model.ticksPerSecond, now: model.tick)
-                    ReviveSection(model: model, species: sp)
+                    HStack(alignment: .top, spacing: 8) {
+                        SpeciesCard(species: sp, tps: model.ticksPerSecond, now: model.tick)
+                        ReviveSection(model: model, species: sp).frame(width: 150)
+                    }
                 } else {
                     Text("線をクリックすると種の詳細を表示").font(.system(size: 10, design: .rounded))
                         .foregroundStyle(Palette.textFaint).fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
             }
-            .frame(width: 170)
+            .frame(width: model.selectedSpecies.flatMap { model.speciesById[$0] } != nil ? 330 : 170)
             if rows.isEmpty {
                 placeholder("まだ種が分岐していません")
             } else {

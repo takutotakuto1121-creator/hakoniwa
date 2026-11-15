@@ -49,6 +49,9 @@ final class GodBridge: @unchecked Sendable {
         let id = ObjectIdentifier(w)
         let newWorld = id != seenWorld
         var field: [Float]?
+        if newWorld && seenWorld != nil {
+            DispatchQueue.main.async { GodModel.shared.revivedFrom.removeAll() }
+        }
         if newWorld || w.walls.version != seenWallVersion {
             seenWorld = id
             seenWallVersion = w.walls.version

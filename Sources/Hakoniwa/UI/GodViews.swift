@@ -148,6 +148,8 @@ struct ReviveSection: View {
         let now = model.tick
         let ancestorAgo = Double(now - s.birthTick) / tps
         VStack(alignment: .leading, spacing: 5) {
+            Text(s.isAlive ? "祖先に会う" : "絶滅種の復活")
+                .font(.system(size: 11.5, weight: .bold, design: .rounded))
             Group {
                 if let ext = s.extinctTick {
                     Text("\(formatSpan(Double(now - ext) / tps))前に絶滅")
@@ -183,6 +185,12 @@ struct ReviveSection: View {
             }
             .buttonStyle(.plain)
             .help(s.isAlive ? "この種の創始者を画面中央に放つ" : "絶滅したこの種の創始者を画面中央に蘇らせる")
+            Text("創始者の遺伝子と脳から\(GodActions.reviveCount)匹を画面中央に")
+                .font(.system(size: 9.5, design: .rounded))
+                .foregroundStyle(Palette.textFaint)
+                .fixedSize(horizontal: false, vertical: true)
         }
+        .padding(8)
+        .background(RoundedRectangle(cornerRadius: 10).fill(Color.white.opacity(0.05)))
     }
 }
