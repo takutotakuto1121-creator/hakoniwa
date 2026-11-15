@@ -8,6 +8,7 @@ struct ContentView: View {
         ZStack {
             WorldView(model: model)
                 .ignoresSafeArea()
+            if !TimelapsePlayer.shared.active { NameTagLayer() }
             if TimelapsePlayer.shared.active {
                 TimelapseOverlay(player: TimelapsePlayer.shared)
                     .transition(.opacity)
@@ -30,6 +31,8 @@ struct ContentView: View {
                 }
                 .padding(14)
             }
+            PetOverlay(model: model)
+            EncyclopediaHost()
             ToastView(model: model)
             DuelHost()
         }

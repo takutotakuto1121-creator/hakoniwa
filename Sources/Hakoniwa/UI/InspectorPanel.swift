@@ -10,6 +10,7 @@ struct InspectorPanel: View {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 14) {
                     header(d)
+                    PetNameRow(model: model, detail: d)
                     vitals(d)
                     if !d.isEgg { VisionToggleRow(model: model, detail: d) }
                     BiographySection(model: model)

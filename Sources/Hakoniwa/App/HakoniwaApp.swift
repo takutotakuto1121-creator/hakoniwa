@@ -156,6 +156,7 @@ enum KeyHandler {
         if event.modifierFlags.intersection([.command, .control, .option]).isEmpty == false { return false }
         if DuelCoordinator.shared.handleKey(event) { return true }
         if TimelapsePlayer.shared.active { return TimelapsePlayer.shared.handleKey(event) }
+        if EncyclopediaStore.shared.handleKey(event) { return true }
         let m = env.model
         switch event.keyCode {
         case 49: m.togglePause(); return true                 // space
@@ -232,6 +233,8 @@ struct HakoniwaApp: App {
                 Divider()
                 Button("世代対決…") { DuelCoordinator.shared.toggle() }.keyboardShortcut("d")
                 Button("進化のタイムラプス") { TimelapsePlayer.shared.toggle() }.keyboardShortcut("l")
+                Button("種の図鑑") { EncyclopediaStore.shared.toggle() }.keyboardShortcut("e")
+                Button("お気に入りの個体") { PetStore.shared.showFavorites.toggle() }.keyboardShortcut("k")
                 Divider()
                 Button("追尾の切り替え") { env.model.following.toggle() }
                 Button("選択を解除") { env.model.select(nil) }
