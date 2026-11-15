@@ -85,7 +85,9 @@ final class DemoDirector {
         beginOverview(establishing: true)
     }
 
-    func stop() {
+    /// Ends the demo and restores the panels, speed and pause state. `keepClock` leaves the speed
+    /// and pause alone (the duel, which pauses the main world itself, is taking over).
+    func stop(keepClock: Bool = false) {
         guard isActive else { return }
         isActive = false
         captionVisible = false
@@ -102,8 +104,10 @@ final class DemoDirector {
         m.following = false
         if let s = saved {
             m.showVision = s.vision
-            m.speed = s.speed
-            m.paused = s.paused
+            if !keepClock {
+                m.speed = s.speed
+                m.paused = s.paused
+            }
             withAnimation(.easeOut(duration: 0.3)) { m.showPanels = s.panels }
         }
         saved = nil
@@ -370,7 +374,7 @@ struct DemoHost: View {
             }
         }
         .animation(.easeInOut(duration: 0.7), value: director.isActive)
-        .onChange(of: duel.isPresented) { _, presented in if presented { director.stop() } }
+        .onChange(of: duel.isPresented) { _, presented in if presented { director.stop(keepClock: true) } }
     }
 }
 
