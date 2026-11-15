@@ -122,6 +122,7 @@ struct TopBar: View {
                 model.togglePause()
             }
             iconButton("forward.frame.fill", help: "1ステップ (.)") { model.step() }
+            iconButton("flag.2.crossed.fill", help: "世代対決 — 第0世代と進化後を比べる (⌘D)") { DuelCoordinator.shared.open() }
             iconButton("square.split.bottomrightquarter", help: "下のパネル (B)") { model.showBottom.toggle() }
             iconButton("eye.slash", help: "パネルを隠す (H)") { model.showPanels = false }
             iconButton("plus.square.on.square", help: "新しい世界 (⌘N)") { model.showNewWorldSheet = true }

@@ -28,6 +28,7 @@ struct ContentView: View {
                 .padding(14)
             }
             ToastView(model: model)
+            DuelHost()
         }
         .sheet(isPresented: $model.showNewWorldSheet) { NewWorldSheet(model: model) }
         .animation(.easeOut(duration: 0.2), value: model.showPanels)

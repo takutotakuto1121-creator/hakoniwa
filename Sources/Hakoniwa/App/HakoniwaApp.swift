@@ -33,9 +33,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
         }
-        if let path = env.options.screenshot {
+        if let path = env.options.screenshot, !DuelLaunch.requested {
             scheduleScreenshot(path: path, env: env)
         }
+        DuelLaunch.start(env: env)
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
@@ -97,6 +98,7 @@ enum KeyHandler {
         // Leave typing in text fields alone.
         if let responder = NSApp.keyWindow?.firstResponder, responder is NSText { return false }
         if event.modifierFlags.intersection([.command, .control, .option]).isEmpty == false { return false }
+        if DuelCoordinator.shared.handleKey(event) { return true }
         let m = env.model
         switch event.keyCode {
         case 49: m.togglePause(); return true                 // space
@@ -167,6 +169,8 @@ struct HakoniwaApp: App {
                 ForEach(SimSpeed.allCases) { s in
                     Button("速度 \(s.label)") { env.model.speed = s; env.model.paused = false }
                 }
+                Divider()
+                Button("世代対決…") { DuelCoordinator.shared.toggle() }.keyboardShortcut("d")
                 Divider()
                 Button("追尾の切り替え") { env.model.following.toggle() }
                 Button("選択を解除") { env.model.select(nil) }
