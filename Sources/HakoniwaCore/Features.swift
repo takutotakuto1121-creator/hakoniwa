@@ -72,9 +72,12 @@ extension World {
     /// Splits the torus into two separate continents with two vertical walls.
     public func splitContinents() {
         let w = config.worldWidth, h = config.worldHeight
+        // Paint in quarter-height pieces: a single top-to-bottom stroke would be taken as the
+        // one-unit shortcut across the torus seam.
         for x in [Float(2), w / 2] {
-            paintWall(from: V2(x, 0), to: V2(x, h - 1), radius: 40)
-            paintWall(from: V2(x, h - 1), to: V2(x, 0), radius: 40)
+            for k in 0..<4 {
+                paintWall(from: V2(x, h * Float(k) / 4), to: V2(x, h * Float(k + 1) / 4 - 1), radius: 40)
+            }
         }
         // Push creatures that ended up inside the wall out of it.
         for i in 0..<highWater where stage[i] != 0 && walls.isWall(pos[i]) {

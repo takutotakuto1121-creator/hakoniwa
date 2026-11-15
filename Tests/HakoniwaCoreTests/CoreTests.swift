@@ -250,7 +250,10 @@ final class FeatureTests: XCTestCase {
     func testWallsBlockCreaturesAndPlants() {
         let w = World(config: .small, seed: 21)
         w.splitContinents()
-        XCTAssertGreaterThan(w.walls.count, 0)
+        // Two full-height walls, each several cells thick.
+        XCTAssertGreaterThan(w.walls.count, WallMask.resolution * 2 * 3)
+        XCTAssertTrue(w.walls.isWall(V2(w.config.worldWidth / 2, 10)))
+        XCTAssertTrue(w.walls.isWall(V2(w.config.worldWidth / 2, w.config.worldHeight / 2)))
         w.step(1200)
         for i in 0..<w.highWater where w.stage[i] != 0 {
             XCTAssertFalse(w.walls.isWall(w.pos[i]), "creature inside wall at \(w.pos[i])")
