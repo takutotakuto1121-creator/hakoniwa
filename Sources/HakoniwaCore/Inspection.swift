@@ -23,6 +23,7 @@ public struct CreatureInstance: Sendable {
     public var hurt: Float
     /// Bit flags: 1 = egg, 2 = biting, 4 = eating, 8 = selected (set by the renderer).
     public var flags: Float
+    /// Growth 0...1 for creatures; hatch progress 0...1 for eggs.
     public var maturity: Float
     public var signal: Float
 }
@@ -62,6 +63,7 @@ public struct CreatureDetail: Sendable {
     public var generation: Int32
     public var age: Float
     public var lifespan: Float
+    /// Growth 0...1 for creatures; hatch progress 0...1 for eggs.
     public var maturity: Float
     public var energy: Float
     public var capacity: Float
@@ -105,7 +107,7 @@ extension World {
                 hue: g.hue, saturation: g.saturation, diet: g.diet, swimPhase: swimPhase[i],
                 segments: g.segments, fins: g.fins, tail: g.tail, pattern: g.pattern, eyes: g.eyes,
                 energy: min(energy[i] / max(capacityOf(i), 1), 1), hurt: hurt[i], flags: flags,
-                maturity: isEgg ? 0 : maturity(i), signal: max(signal1[i], signal2[i])))
+                maturity: isEgg ? clamp01(1 - eggTimer[i] / config.eggHatchTime) : maturity(i), signal: max(signal1[i], signal2[i])))
             snap.uids.append(uid[i])
         }
         snap.food.removeAll(keepingCapacity: true)

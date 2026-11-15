@@ -36,31 +36,9 @@ extension World {
 
     public static func assay(_ genomes: [(Genes, BrainGenome)], base: SimConfig, seed: UInt64 = 77,
                              seconds: Float = 120) -> AssayResult {
-        var c = base
-        c.worldWidth = 2400
-        c.worldHeight = 2400
-        c.maxCreatures = max(genomes.count + 8, 16)
-        let w = World(config: c, seed: seed, populate: false)
-        w.assayMode = true
-        w.assayRng = RNG(seed: seed &+ 1)
-        // Sparse enough that searching matters (~1 pellet per 9,600 square units).
-        w.assayPlants = 600
-        var rng = RNG(seed: seed &+ 2)
-        // Each creature starts in its own region so they barely interact.
+        let w = makeArena(genomes, base: base, seed: seed)
+        let c = w.config
         let n = genomes.count
-        let side = Int(Double(n).squareRoot().rounded(.up))
-        for (k, (g, b)) in genomes.enumerated() {
-            let cell = c.worldWidth / Float(side)
-            let p = V2((Float(k % side) + 0.5) * cell, (Float(k / side) + 0.5) * cell)
-            if let i = w.spawn(genes: g, brain: b, at: p, energy: 0, asEgg: false, species: -1, parent: -1, generation: 0) {
-                w.age[i] = c.maturityAge
-                w.rad[i] = w.radius(i)
-                w.health[i] = w.maxHealth(i)
-                w.energy[i] = w.capacityOf(i) * 0.5
-                w.heading[i] = rng.float(-.pi, .pi)
-            }
-        }
-        w.foodDynamics()
         let ticks = Int(seconds * c.ticksPerSecond)
         w.step(ticks)
         let perCreatureMinute = w.assayEaten / Double(max(n, 1)) / Double(seconds / 60)

@@ -245,3 +245,91 @@ final class WorldTests: XCTestCase {
         w.step(50)
     }
 }
+
+final class FeatureTests: XCTestCase {
+    func testWallsBlockCreaturesAndPlants() {
+        let w = World(config: .small, seed: 21)
+        w.splitContinents()
+        XCTAssertGreaterThan(w.walls.count, 0)
+        w.step(1200)
+        for i in 0..<w.highWater where w.stage[i] != 0 {
+            XCTAssertFalse(w.walls.isWall(w.pos[i]), "creature inside wall at \(w.pos[i])")
+        }
+        for k in 0..<w.foodCount where w.foodKind[k] == 0 {
+            XCTAssertFalse(w.walls.isWall(w.foodPos[k]))
+        }
+        let total = w.config.totalEnergy
+        XCTAssertEqual(w.measuredTotalEnergy(), total, accuracy: total * 2e-3)
+        w.clearWalls()
+        XCTAssertEqual(w.walls.count, 0)
+    }
+
+    func testReviveBringsBackExtinctSpecies() {
+        let w = World(config: .small, seed: 22)
+        w.step(3000)
+        guard let extinct = w.species.first(where: { $0.population == 0 }) else {
+            return XCTFail("expected at least one extinct species")
+        }
+        let uids = w.revive(speciesId: extinct.id, at: V2(800, 800), count: 4)
+        XCTAssertFalse(uids.isEmpty)
+        XCTAssertGreaterThan(extinct.population, 0)
+        XCTAssertNil(extinct.extinctTick)
+        XCTAssertEqual(w.detail(uid: uids[0])?.speciesId, extinct.id)
+        XCTAssertEqual(w.detail(uid: uids[0])?.genes, extinct.founderGenes)
+    }
+
+    func testClimateAndPlague() {
+        let w = World(config: .small, seed: 23)
+        w.step(600)
+        w.startClimate(.iceAge, minutes: 1)
+        XCTAssertEqual(w.climate.kind, .iceAge)
+        w.step(Int(60 * w.config.ticksPerSecond) + 5)
+        XCTAssertEqual(w.climate.kind, .normal)
+        let before = w.aliveCount
+        XCTAssertNotNil(w.plague())
+        w.step(Int(50 * w.config.ticksPerSecond))
+        XCTAssertLessThan(w.aliveCount, before + 200)
+        let total = w.config.totalEnergy
+        XCTAssertEqual(w.measuredTotalEnergy(), total, accuracy: total * 2e-3)
+    }
+
+    func testBiographyAndHallOfFame() {
+        let w = World(config: .small, seed: 24)
+        w.step(200)
+        var target: UInt64 = 0
+        for i in 0..<w.highWater where w.stage[i] == Stage.alive.rawValue { target = w.uid[i]; break }
+        w.watch(uid: target)
+        XCTAssertEqual(w.biography.count, 1)
+        w.step(3000)
+        XCTAssertGreaterThan(w.biography.count, 1)
+        XCTAssertFalse(w.hallOfFame(.offspring).isEmpty)
+        let longevity = w.hallOfFame(.longevity)
+        XCTAssertEqual(longevity.map(\.value), longevity.map(\.value).sorted(by: >))
+    }
+
+    func testHistoryCaptureAndPersistence() throws {
+        let w = World(config: .small, seed: 25)
+        w.historyInterval = 200
+        w.paintWall(from: V2(100, 100), to: V2(400, 100), radius: 20)
+        w.step(1000)
+        XCTAssertEqual(w.history.count, 5)
+        let f = w.history.last!
+        XCTAssertEqual(f.creatureCount, Int(f.population))
+        XCTAssertGreaterThan(f.plants.count, 0)
+        let inst = f.instance(0)
+        XCTAssert(inst.position.x >= 0 && inst.position.x <= w.config.worldWidth)
+        let b = try World.deserialize(try w.serialize())
+        XCTAssertEqual(b.history.count, w.history.count)
+        XCTAssertEqual(b.history.last!.creatures, f.creatures)
+        XCTAssertEqual(b.walls.cells, w.walls.cells)
+        XCTAssertEqual(b.hallOfFame(.longevity).count, w.hallOfFame(.longevity).count)
+    }
+
+    func testArenaIsFairBetweenIdenticalTeams() {
+        let genomes = World.primordialGenomes(20, seed: 3, config: .small)
+        let a = World.makeArena(genomes, base: .small, seed: 9, size: 1200, plants: 200)
+        let b = World.makeArena(genomes, base: .small, seed: 9, size: 1200, plants: 200)
+        a.step(600); b.step(600)
+        XCTAssertEqual(a.arenaGathered, b.arenaGathered)
+    }
+}

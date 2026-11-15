@@ -6,7 +6,7 @@ public enum Stage: UInt8, Sendable {
     case free = 0, egg = 1, alive = 2
 }
 
-public enum DeathCause: Sendable { case starved, killed, old, removed }
+public enum DeathCause: Sendable { case starved, killed, old, removed, disease }
 
 /// Visual effect events emitted for the renderer.
 public struct FXEvent: Sendable {
@@ -58,6 +58,8 @@ public final class World {
     let rad: UnsafeMutablePointer<Float>
     /// Energy invested in body tissue while growing; becomes meat on death.
     let body: UnsafeMutablePointer<Float>
+    /// Seconds until a sick creature's illness resolves (0 = healthy).
+    let sick: UnsafeMutablePointer<Float>
     let eggTimer: UnsafeMutablePointer<Float>
     let lastMeal: UnsafeMutablePointer<Float>
     let biteTarget: UnsafeMutablePointer<Int32>
@@ -114,6 +116,19 @@ public final class World {
     public internal(set) var totalBirths = 0
 
     let dragFactor: Float
+
+    // MARK: Player-facing features (see Features.swift)
+    public let walls: WallMask
+    public internal(set) var climate = ClimateState()
+    public internal(set) var watchUid: UInt64 = 0
+    public internal(set) var biography: [BioEntry] = []
+    var bioFlags: BioFlags = []
+    var lastBioBitten: Int64 = -1_000_000
+    var lastBioBite: Int64 = -1_000_000
+    var hall: [[FameEntry]] = [[], [], []]
+    public internal(set) var history: [HistoryFrame] = []
+    /// Ticks between time-lapse frames (3 minutes of world time).
+    public var historyInterval: Int64 = 3600
     /// Assay mode: no metabolism, ageing, reproduction or predation; constant plant density.
     var assayMode = false
     var assayPlants = 0
@@ -138,7 +153,7 @@ public final class World {
         generation = a(n, 0); birthTick = a(n, 0)
         pos = a(n, .zero); vel = a(n, .zero); push = a(n, .zero)
         heading = a(n, 0); energy = a(n, 0); health = a(n, 0); age = a(n, 0); hurt = a(n, 0)
-        signal1 = a(n, 0); signal2 = a(n, 0); swimPhase = a(n, 0); lost = a(n, 0); rad = a(n, 1); body = a(n, 0); eggTimer = a(n, 0)
+        signal1 = a(n, 0); signal2 = a(n, 0); swimPhase = a(n, 0); lost = a(n, 0); rad = a(n, 1); body = a(n, 0); sick = a(n, 0); eggTimer = a(n, 0)
         lastMeal = a(n, 0); biteTarget = a(n, -1); foodTarget = a(n, -1); kills = a(n, 0); offspring = a(n, 0)
         eaten = a(n, 0)
         genes = a(n, Genes(.zero))
@@ -159,6 +174,7 @@ public final class World {
         creatureGrid = SpatialGrid(worldSize: config.worldSize, cellSize: 64, capacity: n)
         foodGrid = SpatialGrid(worldSize: config.worldSize, cellSize: 48, capacity: foodCapacity)
         dragFactor = exp(-config.drag * config.dt)
+        walls = WallMask(worldSize: config.worldSize)
 
         soil = config.totalEnergy
         if populate { populateInitial() }
@@ -169,7 +185,7 @@ public final class World {
         generation.deallocate(); birthTick.deallocate()
         pos.deallocate(); vel.deallocate(); push.deallocate()
         heading.deallocate(); energy.deallocate(); health.deallocate(); age.deallocate(); hurt.deallocate()
-        signal1.deallocate(); signal2.deallocate(); swimPhase.deallocate(); lost.deallocate(); rad.deallocate(); body.deallocate(); eggTimer.deallocate()
+        signal1.deallocate(); signal2.deallocate(); swimPhase.deallocate(); lost.deallocate(); rad.deallocate(); body.deallocate(); sick.deallocate(); eggTimer.deallocate()
         lastMeal.deallocate(); biteTarget.deallocate(); foodTarget.deallocate(); kills.deallocate()
         offspring.deallocate(); eaten.deallocate()
         genes.deallocate(); pheno.deallocate(); conns.deallocate(); connCount.deallocate(); connSplit.deallocate()
@@ -260,6 +276,7 @@ public final class World {
         heading[i] = rng.float(-.pi, .pi)
         energy[i] = e
         body[i] = 0
+        sick[i] = 0
         genes[i] = g
         pheno[i] = Phenotype(g, config)
         age[i] = 0
@@ -364,8 +381,10 @@ public final class World {
         var p = V2.zero
         for _ in 0..<10 {
             p = V2(rng.float(0, config.worldWidth), rng.float(0, config.worldHeight))
+            if walls.isWall(p) { continue }
             if rng.float() < fertility.value(at: p, time: t, driftPeriod: config.fertilityDriftPeriod) { break }
         }
+        if walls.isWall(p) { return true }  // try again next time; keeps the accumulator moving
         let k = foodCount
         foodPos[k] = p
         foodEnergy[k] = config.plantEnergy
@@ -422,10 +441,12 @@ public final class World {
         timed(4) { lifecycle() }
         timed(5) { foodDynamics() }
         timed(6) { repopulate() }
+        updateClimate()
+        if !assayMode && tick % historyInterval == 0 { captureHistory() }
         window.creatureTicks += Double(aliveCount)
         tick += 1
         if tick % sampleInterval == 0 { sample() }
-        if tick % 900 == 0 { rebalanceEnergy() }
+        if tick % 100 == 0 { rebalanceEnergy() }
     }
 
     func buildGrids() {
@@ -637,7 +658,7 @@ public final class World {
             let st = stage[i]
             if st == 0 { continue }
             if st == Stage.egg.rawValue {
-                pos[i] = torusWrap(pos[i] + push[i], size)
+                pos[i] = walls.count > 0 ? moveRespectingWalls(pos[i], push[i]).0 : torusWrap(pos[i] + push[i], size)
                 rad[i] = pheno[i].radiusAdult * Phenotype.growth(0)
                 eggTimer[i] -= dt
                 lost[i] = 0
@@ -659,7 +680,13 @@ public final class World {
             var v = vel[i] + dir * (thrust * ph.maxAccel * dt)
             v *= dragFactor
             vel[i] = v
-            pos[i] = torusWrap(pos[i] + v * dt + push[i], size)
+            if walls.count > 0 {
+                let (np, blocked) = moveRespectingWalls(pos[i], v * dt + push[i])
+                pos[i] = np
+                if blocked { vel[i] = v * 0.4 }
+            } else {
+                pos[i] = torusWrap(pos[i] + v * dt + push[i], size)
+            }
             let spd = simd_length(v)
             swimPhase[i] += dt * (2 + spd * 0.12) * (1 + abs(thrust))
 
@@ -742,6 +769,7 @@ public final class World {
                     soil += take - gain
                     eaten[i] += gain
                     lastMeal[i] = age[i]
+                    if watchUid != 0 && isWatched(i) { bioAte(i, meat: kind == 1) }
                     window.intake += gain
                     if kind == 1 { window.meatIntake += gain }
                     if foodEnergy[f] <= 0.01 {
@@ -762,6 +790,10 @@ public final class World {
                 let dmg = c.biteDamage * r * r * ph.biteStrength * bite * dt
                 health[t] -= dmg
                 hurt[t] = 1
+                if watchUid != 0 {
+                    if isWatched(t) { bioBitten(victim: t, by: i) }
+                    if isWatched(i) { bioBit(attacker: i, victim: t) }
+                }
                 let drain = min(max(energy[t], 0), dmg * c.biteDrain)
                 energy[t] -= drain
                 let cap = capacityOf(i)
@@ -774,6 +806,10 @@ public final class World {
                 if gain > 0 { lastMeal[i] = age[i] }
                 if health[t] <= 0 && stage[t] == Stage.alive.rawValue {
                     kills[i] += 1
+                    if watchUid != 0 {
+                        if isWatched(i) { bio(i, "「\(speciesName(t))」を仕留めた(通算 \(kills[i]) 匹目)。") }
+                        if isWatched(t) { bio(t, "「\(speciesName(i))」に仕留められた。") }
+                    }
                 }
             }
             // Laying eggs
@@ -806,6 +842,10 @@ public final class World {
         if spawn(genes: g, brain: b, at: behind, energy: eggE, asEgg: true, species: sp,
                  parent: i, generation: generation[i] + 1) != nil {
             offspring[i] += 1
+            if watchUid != 0 && isWatched(i) {
+                let n = offspring[i]
+                if n == 1 || n == 5 || n == 10 || n % 20 == 0 { bio(i, n == 1 ? "初めて卵を産んだ。" : "\(n)個目の卵を産んだ。") }
+            }
             window.births += 1
             totalBirths += 1
         } else {
@@ -831,11 +871,14 @@ public final class World {
                     age[i] = 0
                     health[i] = maxHealth(i)
                     if collectFX { fx(.hatch, i) }
+                    if isWatched(i) { bio(i, "卵から孵った。") }
                 }
                 continue
             }
             if health[i] <= 0 {
                 die(i, cause: .killed)
+            } else if progressSickness(i) {
+                die(i, cause: .disease)
             } else if energy[i] <= 0 {
                 die(i, cause: .starved)
             } else if age[i] > pheno[i].lifespan {
@@ -845,6 +888,19 @@ public final class World {
     }
 
     func die(_ i: Int, cause: DeathCause) {
+        if stage[i] == Stage.alive.rawValue && !assayMode { recordFame(i) }
+        if isWatched(i) {
+            let life = formatDuration(Double(age[i]))
+            let how: String
+            switch cause {
+            case .starved: how = "飢えて力尽きた"
+            case .killed: how = stage[i] == Stage.egg.rawValue ? "卵のまま食べられた" : "捕食されて命を落とした"
+            case .old: how = "寿命を全うした"
+            case .removed: how = "神の手によってこの世界から消えた"
+            case .disease: how = "疫病に倒れた"
+            }
+            bio(i, "\(how)。生涯 \(life)、子 \(offspring[i]) 匹、捕食 \(kills[i]) 回。")
+        }
         let remaining = max(energy[i], 0) + body[i]
         body[i] = 0
         // Bodies are worth more than their stored energy only through that energy itself,
@@ -855,7 +911,7 @@ public final class World {
         case .starved: window.deathsStarved += 1
         case .killed: window.deathsKilled += 1
         case .old: window.deathsOld += 1
-        case .removed: break
+        case .removed, .disease: break
         }
         if collectFX { fx(cause == .killed ? .kill : .death, i) }
         if stage[i] == Stage.egg.rawValue { eggCount -= 1 } else { aliveCount -= 1 }
@@ -914,7 +970,7 @@ public final class World {
         }
         // Plants grow from soil.
         if soil > 0 {
-            plantAccumulator += soil * c.plantGrowth * seasonFactor * dt
+            plantAccumulator += soil * c.plantGrowth * seasonFactor * climate.plantMultiplier * dt
             let cap = c.plantEnergy * 64
             if plantAccumulator > cap { plantAccumulator = cap }
             while plantAccumulator >= c.plantEnergy {

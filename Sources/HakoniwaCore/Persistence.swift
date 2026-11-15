@@ -62,6 +62,9 @@ struct MetaDTO: Codable {
     var species: [SpeciesDTO]
     var events: [EventDTO]
     var samples: [StatSample]
+    var climate: ClimateState
+    var hall: [[FameEntry]]
+    var historyCount: Int
 }
 
 private struct Writer {
@@ -98,7 +101,7 @@ private struct Reader {
 }
 
 extension World {
-    public static let fileVersion = 2
+    public static let fileVersion = 3
     static let magic: UInt64 = 0x4448_574B_4E48_4B48  // "HKHNKWHD"
 
     public func save(to url: URL) throws {
@@ -122,7 +125,7 @@ extension World {
                            maxGen: $0.maxGeneration)
             },
             events: events.map { EventDTO(id: $0.id, tick: $0.tick, kind: $0.kind, message: $0.message, speciesId: $0.speciesId) },
-            samples: samples)
+            samples: samples, climate: climate, hall: hall, historyCount: history.count)
         let metaData = try (JSONEncoder().encode(meta) as NSData).compressed(using: .lzfse) as Data
         var w = Writer()
         let n = highWater
@@ -137,6 +140,15 @@ extension World {
         w.raw(biteTarget, n); w.raw(foodTarget, n); w.raw(inputs, n * Brain.inputs); w.raw(rad, n)
         let f = foodCount
         w.raw(foodPos, f); w.raw(foodEnergy, f); w.raw(foodKind, f)
+        w.raw(sick, n)
+        walls.cells.withUnsafeBufferPointer { w.raw($0.baseAddress!, $0.count) }
+        for h in history {
+            w.u64(UInt64(bitPattern: h.tick))
+            w.u64(UInt64(h.population)); w.u64(UInt64(h.carnivores)); w.u64(UInt64(h.maxGeneration))
+            w.u64(UInt64(h.creatures.count)); w.u64(UInt64(h.plants.count))
+            h.creatures.withUnsafeBufferPointer { if $0.count > 0 { w.raw($0.baseAddress!, $0.count) } }
+            h.plants.withUnsafeBufferPointer { if $0.count > 0 { w.raw($0.baseAddress!, $0.count) } }
+        }
         let body = try (w.data as NSData).compressed(using: .lzfse) as Data
         var out = Writer()
         out.u64(World.magic)
@@ -185,6 +197,24 @@ extension World {
         try b.raw(into: w.inputs, n * Brain.inputs); try b.raw(into: w.rad, n)
         let f = meta.foodCount
         try b.raw(into: w.foodPos, f); try b.raw(into: w.foodEnergy, f); try b.raw(into: w.foodKind, f)
+        try b.raw(into: w.sick, n)
+        var wallCells = [UInt8](repeating: 0, count: WallMask.resolution * WallMask.resolution)
+        try wallCells.withUnsafeMutableBufferPointer { try b.raw(into: $0.baseAddress!, $0.count) }
+        w.walls.load(wallCells)
+        var frames: [HistoryFrame] = []
+        for _ in 0..<meta.historyCount {
+            let t = Int64(bitPattern: try b.u64())
+            let pop = Int32(try b.u64()), carn = Int32(try b.u64()), gen = Int32(try b.u64())
+            let nc = Int(try b.u64()), np = Int(try b.u64())
+            guard nc <= 2_000_000, np <= 2_000_000 else { throw PersistenceError.corrupt("history") }
+            var c = [Float16](repeating: 0, count: nc), pl = [Float16](repeating: 0, count: np)
+            if nc > 0 { try c.withUnsafeMutableBufferPointer { try b.raw(into: $0.baseAddress!, nc) } }
+            if np > 0 { try pl.withUnsafeMutableBufferPointer { try b.raw(into: $0.baseAddress!, np) } }
+            frames.append(HistoryFrame(tick: t, creatures: c, plants: pl, population: pop, carnivores: carn, maxGeneration: gen))
+        }
+        w.history = frames
+        w.climate = meta.climate
+        w.hall = meta.hall
         w.tick = meta.tick
         for i in 0..<n where w.stage[i] != 0 {
             w.pheno[i] = Phenotype(w.genes[i], meta.config)
