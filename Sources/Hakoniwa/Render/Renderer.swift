@@ -304,7 +304,13 @@ final class Renderer: NSObject, MTKViewDelegate {
         }
         if let p = selPos, selIdx >= 0 {
             let c = cbuf.buffer.contents().bindMemory(to: CreatureInstance.self, capacity: creatureCount)[selIdx]
-            selPos = p + c.velocity * extrap
+            // Centre the ring on the middle of the body rather than the head.
+            let isEgg = c.flags.truncatingRemainder(dividingBy: 2) >= 1
+            let segs = 2 + min(Float(Int(c.segments * 5)), 4)
+            let bodyLen = (segs - 1) * (0.82 + 0.13 * c.diet)
+            let back = isEgg ? 0 : (bodyLen * 0.5 + 0.2) * c.radius
+            selPos = p + c.velocity * extrap - V2(cos(c.heading), sin(c.heading)) * back
+            selRad = isEgg ? c.radius * 1.3 : c.radius * (1 + bodyLen * 0.5)
         }
         selectedIndex = selIdx
         selectedPosition = selPos.map { camera.wrap($0) }
@@ -329,7 +335,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         var rings: [GPURing] = []
         let t = Float(now - startTime)
         if let p = selectedPosition {
-            let r = selRad * 2.6 + 10 * camera.pixelRatio / camera.zoom
+            let r = selRad * 1.3 + 8 * camera.pixelRatio / camera.zoom
             rings.append(GPURing(position: p, radius: r, thickness: 1.2 * camera.pixelRatio,
                                  color: SIMD4(0.55, 0.85, 1.0, 0.9) * 0.9, dash: 14, spin: 0.5))
         }
@@ -535,15 +541,16 @@ final class Renderer: NSObject, MTKViewDelegate {
                      color: SIMD3(2.4, 0.35, 0.12), shape: 2, damping: 4)
             }
         case .meteor:
-            emit(p, vel: .zero, size: e.size * 0.6, growth: e.size * 1.2, duration: 1.2, color: SIMD3(6, 3.2, 1.2), shape: 0, damping: 0)
-            emit(p, vel: .zero, size: e.size * 0.1, growth: e.size * 2.2, duration: 1.4, color: SIMD3(4, 2, 0.8), shape: 1, damping: 0)
-            emit(p, vel: .zero, size: e.size * 0.1, growth: e.size * 1.4, duration: 1.8, color: SIMD3(1.5, 0.7, 0.3), shape: 1, damping: 0)
+            // Brief flash, then two expanding shock rings and a spray of embers.
+            emit(p, vel: .zero, size: e.size * 0.35, growth: e.size * 0.8, duration: 0.55, color: SIMD3(2.2, 1.2, 0.5), shape: 0, damping: 0)
+            emit(p, vel: .zero, size: e.size * 0.1, growth: e.size * 2.4, duration: 1.3, color: SIMD3(2.4, 1.2, 0.5), shape: 1, damping: 0)
+            emit(p, vel: .zero, size: e.size * 0.1, growth: e.size * 1.5, duration: 1.9, color: SIMD3(0.9, 0.45, 0.2), shape: 1, damping: 0)
             for _ in 0..<260 {
                 let a = rand(0, 2 * .pi), s = rand(30, e.size * 1.8)
                 let hot = rand(0, 1)
                 emit(p + V2(cos(a), sin(a)) * rand(0, e.size * 0.2), vel: V2(cos(a), sin(a)) * s,
-                     size: rand(1.5, 5), duration: rand(0.8, 2.6),
-                     color: SIMD3(3 + hot * 3, 1.0 + hot * 1.6, 0.25 + hot * 0.4), shape: hot > 0.6 ? 2 : 0, damping: 1.6)
+                     size: rand(1.2, 3.5), duration: rand(0.8, 2.6),
+                     color: SIMD3(1.6 + hot * 1.6, 0.5 + hot * 0.9, 0.12 + hot * 0.25), shape: hot > 0.6 ? 2 : 0, damping: 1.6)
             }
         case .feed:
             break

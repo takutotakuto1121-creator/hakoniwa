@@ -25,11 +25,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         if let path = env.options.screenshot {
             scheduleScreenshot(path: path, env: env)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                let ws = NSApp.windows.map { "\($0.className) visible=\($0.isVisible)" }
-                print("windows: \(ws) renderer=\(env.model.renderer != nil) frames=\(env.model.renderer?.frameCount ?? -1)")
-                fflush(stdout)
-            }
         }
     }
 
@@ -48,10 +43,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func scheduleScreenshot(path: String, env: AppEnvironment) {
         let target = env.options.frames
+        var meteorFired = false
         // Drive frames manually: when the window is occluded the display link stops.
         Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { timer in
             guard let r = env.model.renderer else { return }
             if r.frameCount >= target + 2 { timer.invalidate(); return }
+            if env.options.meteor && !meteorFired && r.frameCount >= max(target - 40, 1) {
+                meteorFired = true
+                let c = r.camera.center
+                env.controller.perform { w in w.meteor(at: c, radius: Tool.meteor.radius) }
+            }
             r.view?.draw()
         }
         Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { timer in

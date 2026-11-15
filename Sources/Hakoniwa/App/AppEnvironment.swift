@@ -20,6 +20,7 @@ struct LaunchOptions {
     var center: V2?
     var tool: Tool?
     var windowSize: CGSize?
+    var meteor = false
 
     static func parse(_ args: [String]) -> LaunchOptions {
         var o = LaunchOptions()
@@ -38,6 +39,7 @@ struct LaunchOptions {
             case "--speed": o.speed = next().flatMap { Int($0) }.flatMap { SimSpeed(rawValue: $0) }
             case "--paused": o.paused = true
             case "--hide-panels": o.hidePanels = true
+            case "--meteor": o.meteor = true
             case "--tool": o.tool = next().flatMap { Tool(rawValue: $0) }
             case "--center":
                 if let s = next() {
@@ -138,10 +140,8 @@ final class AppEnvironment {
             controller.perform { [model] w in
                 let uid = w.creature(near: center, maxDistance: 3000)
                 DispatchQueue.main.async {
-                    print("select-first uid=\(String(describing: uid)) windows=\(NSApp.windows.count)"); fflush(stdout)
                     model.select(uid)
                     model.following = uid != nil
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { print("after select windows=\(NSApp.windows.count)"); fflush(stdout) }
                 }
             }
         }
@@ -267,7 +267,6 @@ final class AppEnvironment {
             let metalLayerWasHidden = metalView?.layer?.isHidden ?? false
             metalView?.layer?.isHidden = true
             defer { metalView?.layer?.isHidden = metalLayerWasHidden }
-            if let dbg = ProcessInfo.processInfo.environment["HAKONIWA_METAL_SHOT"] { writePNG(metal, to: URL(fileURLWithPath: dbg)) }
             if let layer = content.layer {
                 ctx.saveGState()
                 ctx.translateBy(x: 0, y: CGFloat(h))

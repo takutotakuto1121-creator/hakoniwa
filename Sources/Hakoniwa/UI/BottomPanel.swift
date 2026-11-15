@@ -126,7 +126,7 @@ struct TraitsView: View {
             Trait(id: "speed", title: "速さ", unit: "", color: Color(red: 0.75, green: 0.6, blue: 1), value: { Double($0.meanSpeed) }, format: "%.2f"),
             Trait(id: "view", title: "視距離", unit: "", color: Color(red: 1, green: 0.75, blue: 0.5), value: { Double($0.meanViewDistance) }, format: "%.2f"),
             Trait(id: "brain", title: "脳の結合数", unit: "本", color: Color(red: 1, green: 0.55, blue: 0.75), value: { Double($0.meanConnections) }, format: "%.1f"),
-            Trait(id: "gen", title: "平均世代", unit: "", color: Palette.omnivore, value: { Double($0.meanGeneration) }, format: "%.0f"),
+            Trait(id: "gen", title: "平均世代", unit: "世代", color: Palette.omnivore, value: { Double($0.meanGeneration) }, format: "%.0f"),
         ]
     }
 
@@ -162,7 +162,8 @@ private struct TraitCard: View {
                 Text(String(format: format, last)).font(.system(size: 18, weight: .bold, design: .rounded)).monospacedDigit()
                 Text(unit).font(.system(size: 10)).foregroundStyle(Palette.textFaint)
             }
-            Text(String(format: "%@%.0f%%(はじめから)", change >= 0 ? "+" : "", change))
+            Text(unit == "世代" ? String(format: "+%.0f世代(はじめから)", last - first)
+                 : String(format: "%@%.0f%%(はじめから)", change >= 0 ? "+" : "", change))
                 .font(.system(size: 9.5, design: .rounded)).monospacedDigit()
                 .foregroundStyle(change >= 0 ? color : Palette.textDim)
             Chart(Array(values.enumerated()), id: \.offset) { i, v in

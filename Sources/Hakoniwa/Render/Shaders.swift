@@ -184,7 +184,7 @@ fragment float4 backgroundFragment(FullscreenOut in [[stage_in]],
     // Faint floating plankton specks.
     float2 g = world * 0.03 + float2(t * 0.05, t * 0.02);
     float2 cell = floor(g);
-    float2 r = hash22(cell);
+    float2 r = hash22(cell) * 0.7 + 0.15;
     float speck = smoothstep(0.08, 0.0, length(fract(g) - r)) * step(0.82, hash12(cell + 7.0));
     col += float3(0.05, 0.09, 0.10) * speck * detail * 0.5;
 
@@ -436,21 +436,34 @@ fragment float4 creatureFragment(CreatureOut in [[stage_in]],
     float lod = smoothstep(2.0, 5.0, in.pxPerUnit);
 
     if (egg) {
+        // Jelly egg: translucent tinted capsule with a curled embryo and a beating glow.
         float d = length(p) - 1.25;
         float aa = fwidth(d) + 1e-3;
         float cover = 1.0 - smoothstep(-aa, aa, d);
-        float rim = smoothstep(-0.35, 0.0, d) * cover;
-        float beat = 0.5 + 0.5 * pow(max(0.0, sin(t * 3.2 + c.hue * 40.0)), 8.0);
-        float2 ep = p - float2(sin(t * 0.7 + c.hue * 9.0), cos(t * 0.7 + c.hue * 9.0)) * 0.18;
-        float embryo = length(ep * float2(1.0, 1.3)) - 0.55;
-        float ecover = 1.0 - smoothstep(-aa, aa, embryo);
-        float3 col = float3(0.75, 0.85, 0.95) * 0.08 * cover;
-        col += float3(0.7, 0.9, 1.0) * rim * 0.45;
-        col += base * ecover * (0.45 + 0.9 * beat);
-        float spec = smoothstep(0.35, 0.0, length(p - float2(0.45, -0.55)));
-        col += float3(1.0) * spec * 0.5 * cover;
-        col += base * exp(-max(d, 0.0) * 3.0) * 0.12 * (1.0 - cover);
-        float alpha = cover * (0.35 + 0.4 * ecover);
+        float inside = clamp(-d / 1.25, 0.0, 1.0);
+        float beat = 0.55 + 0.45 * pow(max(0.0, sin(t * 3.0 + c.hue * 40.0)), 6.0);
+        float wob = sin(t * 1.6 + c.hue * 20.0) * 0.08;
+        // Curled embryo: head plus a tapering tail wrapped around it.
+        float2 hc = float2(cos(-0.3 + wob), sin(-0.3 + wob)) * 0.32;
+        float emb = length(p - hc) - 0.36;
+        for (int k = 1; k <= 5; k++) {
+            float a = -0.3 + wob + float(k) * 0.62;
+            float2 q = float2(cos(a), sin(a)) * (0.36 - float(k) * 0.025);
+            emb = smin(emb, length(p - q) - (0.30 - float(k) * 0.045), 0.12);
+        }
+        float ecov = 1.0 - smoothstep(-aa, aa, emb);
+        float2 eyeP = hc + float2(cos(-0.3 + wob + 0.5), sin(-0.3 + wob + 0.5)) * 0.14;
+        float eye = 1.0 - smoothstep(0.07, 0.07 + aa, length(p - eyeP));
+        float3 jelly = mix(float3(0.10, 0.16, 0.20), base * 0.35, 0.6);
+        float3 col = jelly * cover * (0.25 + 0.5 * (1.0 - inside));
+        float rim = smoothstep(0.10, 0.0, abs(d + 0.05)) * cover;
+        col += (base * 0.7 + float3(0.25)) * rim * 0.9;
+        col = mix(col, base * (0.9 + 0.9 * beat), ecov);
+        col = mix(col, float3(0.02), eye * ecov);
+        float spec = smoothstep(0.28, 0.0, length(p - float2(0.48, -0.55)));
+        col += float3(1.0) * spec * 0.65 * cover;
+        col += base * exp(-max(d, 0.0) * 3.5) * 0.18 * beat * (1.0 - cover);
+        float alpha = cover * (0.30 + 0.55 * ecov + 0.3 * rim);
         return float4(col, alpha);
     }
 
@@ -594,18 +607,20 @@ vertex ParticleOut particleVertex(uint vid [[vertex_id]], uint iid [[instance_id
 fragment float4 particleFragment(ParticleOut in [[stage_in]]) {
     float d = length(in.local);
     float shape = in.color.a;
+    float window = clamp(1.0 - d * d, 0.0, 1.0);
+    window *= window;
     float v;
     if (shape < 0.5) {
         v = exp(-d * d * 5.0);
     } else if (shape < 1.5) {
         float aa = fwidth(d) * 1.5 + 0.01;
-        float w = 0.05 + 0.08 * in.life;
+        float w = 0.025 + 0.05 * in.life;
         v = smoothstep(w + aa, w - aa, abs(d - 0.85)) + exp(-pow(d - 0.85, 2.0) * 60.0) * 0.5;
     } else {
         v = exp(-d * d * 14.0) * 1.5;
     }
     float fade = in.life * in.life;
-    return float4(in.color.rgb * v * fade, 0.0);
+    return float4(in.color.rgb * v * fade * window, 0.0);
 }
 
 // MARK: - Rings (selection, tool cursor)
