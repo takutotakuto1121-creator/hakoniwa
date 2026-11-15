@@ -8,6 +8,7 @@ struct ContentView: View {
         ZStack {
             WorldView(model: model)
                 .ignoresSafeArea()
+            NameTagLayer()
             if model.showPanels {
                 overlay
                     .transition(.opacity)
@@ -27,6 +28,8 @@ struct ContentView: View {
                 }
                 .padding(14)
             }
+            PetOverlay(model: model)
+            EncyclopediaHost()
             ToastView(model: model)
             DuelHost()
         }

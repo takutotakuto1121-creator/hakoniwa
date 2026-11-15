@@ -124,6 +124,8 @@ struct TopBar: View {
                 model.togglePause()
             }
             iconButton("forward.frame.fill", help: "1ステップ (.)") { model.step() }
+            iconButton("book.pages.fill", help: "種の図鑑 (⌘E)") { EncyclopediaStore.shared.open() }
+            iconButton("star.fill", help: "お気に入りの個体 (⌘K)") { PetStore.shared.showFavorites.toggle() }
             iconButton("flag.2.crossed.fill", help: "世代対決 — 第0世代と進化後を比べる (⌘D)") { DuelCoordinator.shared.open() }
             iconButton("square.split.bottomrightquarter", help: "下のパネル (B)") { model.showBottom.toggle() }
             iconButton("eye.slash", help: "パネルを隠す (H)") { model.showPanels = false }
