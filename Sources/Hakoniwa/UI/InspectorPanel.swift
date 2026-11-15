@@ -50,6 +50,13 @@ struct InspectorPanel: View {
                     }
                     .buttonStyle(.plain)
                     .help("追尾 (F)")
+                    Button { CreatureCard.export(model: model) } label: {
+                        Image(systemName: "photo.on.rectangle.angled").font(.system(size: 11, weight: .semibold))
+                            .frame(width: 28, height: 22)
+                            .background(RoundedRectangle(cornerRadius: 7).fill(Color.white.opacity(0.08)))
+                    }
+                    .buttonStyle(.plain)
+                    .help("生き物カードを書き出す")
                     Button { model.select(nil) } label: {
                         Image(systemName: "xmark").font(.system(size: 11, weight: .bold))
                             .frame(width: 28, height: 22)

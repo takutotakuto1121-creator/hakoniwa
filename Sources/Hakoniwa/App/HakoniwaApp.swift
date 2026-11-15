@@ -11,7 +11,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let env = AppEnvironment.shared
-        if env.options.screenshot == nil {
+        if let path = env.options.soundTest {
+            do {
+                print(try SoundEngine.shared.renderOffline(to: URL(fileURLWithPath: path), seconds: 10))
+            } catch {
+                print("sound test failed: \(error)")
+            }
+            fflush(stdout)
+            exit(0)
+        }
+        if env.options.screenshot == nil && env.options.record == nil && env.options.card == nil {
             NSApp.activate(ignoringOtherApps: true)
         } else {
             // Automated capture: stay in the background and ignore stray clicks from the user.
@@ -35,6 +44,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         if let path = env.options.screenshot, !DuelLaunch.requested {
             scheduleScreenshot(path: path, env: env)
+        } else if let path = env.options.record {
+            scheduleRecording(path: path, env: env)
+        } else if let path = env.options.card {
+            scheduleCard(path: path, env: env)
         }
         DuelLaunch.start(env: env)
     }
@@ -50,15 +63,57 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Finish an in-progress recording before quitting so the movie file is complete.
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        guard let r = AppEnvironment.shared.model.renderer, let rec = r.recorder else { return .terminateNow }
-        r.recorder = nil
-        AppEnvironment.shared.model.recording = false
-        rec.finish { _ in NSApp.reply(toApplicationShouldTerminate: true) }
+        guard AppEnvironment.shared.model.renderer?.recorder != nil else { return .terminateNow }
+        AppEnvironment.shared.stopRecording(reveal: false) { _ in NSApp.reply(toApplicationShouldTerminate: true) }
         return .terminateLater
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         AppEnvironment.shared.controller.stop()
+    }
+
+    /// `--card PATH`: once the selection's details have arrived, write its creature card and quit.
+    private func scheduleCard(path: String, env: AppEnvironment) {
+        Timer.scheduledTimer(withTimeInterval: 1.0 / 30.0, repeats: true) { timer in
+            guard let r = env.model.renderer else { return }
+            r.view?.draw()
+            guard r.frameCount >= env.options.frames, env.model.detail != nil else { return }
+            timer.invalidate()
+            let t0 = CACurrentMediaTime()
+            if let img = CreatureCard.makeImage(model: env.model), writePNG(img, to: URL(fileURLWithPath: path)) {
+                print("card \(path) \(img.width)x\(img.height) in \(String(format: "%.2f", CACurrentMediaTime() - t0))s")
+            } else {
+                print("card failed")
+            }
+            fflush(stdout)
+            NSApp.terminate(nil)
+        }
+    }
+
+    /// `--record PATH`: warm up for `--frames` frames, record `--record-seconds`, write the movie and quit.
+    private func scheduleRecording(path: String, env: AppEnvironment) {
+        var started: CFTimeInterval?
+        var stopping = false
+        Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { timer in
+            guard let r = env.model.renderer else { return }
+            if started == nil && r.frameCount >= env.options.frames {
+                guard env.startRecording(to: URL(fileURLWithPath: path)) else {
+                    print("record failed to start"); fflush(stdout); NSApp.terminate(nil); return
+                }
+                started = CACurrentMediaTime()
+            }
+            if let s = started, !stopping, CACurrentMediaTime() - s >= env.options.recordSeconds {
+                stopping = true
+                let rec = r.recorder
+                env.stopRecording(reveal: false) { url in
+                    print("record \(url?.path ?? "FAILED") frames \(rec?.frames ?? 0) dropped \(rec?.dropped ?? 0) skipped \(rec?.skipped ?? 0)")
+                    fflush(stdout)
+                    timer.invalidate()
+                    NSApp.terminate(nil)
+                }
+            }
+            r.view?.draw()
+        }
     }
 
     private func scheduleScreenshot(path: String, env: AppEnvironment) {
@@ -67,7 +122,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Drive frames manually: when the window is occluded the display link stops.
         Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { timer in
             guard let r = env.model.renderer else { return }
-            if r.frameCount >= target + 2 { timer.invalidate(); return }
+            // Keep drawing until the app quits: the capture is taken from a frame drawn after the request,
+            // and an occluded window gets no display-link frames.
             if env.options.meteor && !meteorFired && r.frameCount >= max(target - 40, 1) {
                 meteorFired = true
                 let c = r.camera.center

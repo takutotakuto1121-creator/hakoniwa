@@ -22,6 +22,7 @@ struct TopBar: View {
             ClimateStat()
             Spacer(minLength: 8)
             rateLabel
+            SoundControl()
             speedControl
             controlButtons
         }
