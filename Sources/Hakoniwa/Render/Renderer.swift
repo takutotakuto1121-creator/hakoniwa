@@ -3,7 +3,6 @@ import CoreGraphics
 import HakoniwaCore
 import Metal
 import MetalKit
-import MetalPerformanceShaders
 import QuartzCore
 import simd
 
@@ -118,7 +117,6 @@ final class Renderer: NSObject, MTKViewDelegate {
     /// Pending capture requests, fulfilled after the next frame.
     private var captureRequests: [(CGImage?) -> Void] = []
     var recorder: VideoRecorder?
-    private lazy var scaler = MPSImageBilinearScale(device: device)
 
     /// Tool cursor (world position + radius) drawn as a dashed ring.
     var hover: (position: V2, radius: Float, color: SIMD4<Float>)?
@@ -462,18 +460,7 @@ final class Renderer: NSObject, MTKViewDelegate {
 
         // Readback for screenshots and recording.
         let wantsCapture = !captureRequests.isEmpty
-        if let rec = recorder {
-            // Scale the frame down to the recorder size on the GPU, then hand it to the encoder.
-            let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm_srgb, width: rec.width,
-                                                             height: rec.height, mipmapped: false)
-            d.storageMode = .shared
-            d.usage = [.shaderRead, .shaderWrite]
-            if let small = device.makeTexture(descriptor: d) {
-                scaler.encode(commandBuffer: cmd, sourceTexture: drawable.texture, destinationTexture: small)
-                let frameTime = now
-                cmd.addCompletedHandler { _ in rec.append(texture: small, time: frameTime) }
-            }
-        }
+        recorder?.encodeFrame(commandBuffer: cmd, source: drawable.texture, time: now)
         if wantsCapture {
             let tex = drawable.texture
             let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm_srgb, width: tex.width,

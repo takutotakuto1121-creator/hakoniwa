@@ -21,6 +21,9 @@ struct LaunchOptions {
     var tool: Tool?
     var windowSize: CGSize?
     var meteor = false
+    /// Records a movie of `recordSeconds` to this path, then quits (for automated checks).
+    var record: String?
+    var recordSeconds: Double = 5
 
     /// AppKit pairs up `-key value` arguments as user defaults and treats any argument left over as a
     /// file to open. A value-less flag followed by another option (`--select-first --zoom 2`) leaves `2`
@@ -49,6 +52,8 @@ struct LaunchOptions {
             case "--paused": o.paused = true
             case "--hide-panels": o.hidePanels = true
             case "--meteor": o.meteor = true
+            case "--record": o.record = next()
+            case "--record-seconds": o.recordSeconds = next().flatMap { Double($0) } ?? 5
             case "--tool": o.tool = next().flatMap { Tool(rawValue: $0) }
             case "--center":
                 if let s = next() {
@@ -232,29 +237,48 @@ final class AppEnvironment {
 
     func toggleRecording() {
         guard let r = model.renderer else { return }
-        if let rec = r.recorder {
-            r.recorder = nil
-            model.recording = false
-            rec.finish { [model] url in
-                if let url {
-                    model.showToast("録画を保存しました(ムービー/箱庭)")
-                    NSWorkspace.shared.activateFileViewerSelecting([url])
-                } else {
-                    model.showToast("録画の保存に失敗しました")
-                }
-            }
+        if r.recorder != nil {
+            stopRecording(reveal: true)
         } else {
-            let size = r.camera.viewSize
             let url = AppEnvironment.outputFolder(.moviesDirectory).appendingPathComponent("箱庭 \(AppEnvironment.stamp()).mp4")
-            do {
-                // Hardware H.264 rejects full Retina sizes, so frames are scaled to at most 1920 wide.
-                let scale = min(1, 1920 / max(size.x, 1))
-                r.recorder = try VideoRecorder(url: url, width: Int(size.x * scale), height: Int(size.y * scale))
-                model.recording = true
-                model.showToast("録画を開始しました")
-            } catch {
-                model.showToast("録画を開始できませんでした: \(error.localizedDescription)")
+            startRecording(to: url)
+        }
+    }
+
+    @discardableResult
+    func startRecording(to url: URL) -> Bool {
+        guard let r = model.renderer, r.recorder == nil else { return false }
+        // Hardware H.264 is fussy about large frames, so the movie is at most 1920×1200 (even sizes).
+        let size = VideoRecorder.movieSize(for: r.camera.viewSize)
+        do {
+            let rec = try VideoRecorder(url: url, width: size.width, height: size.height, device: r.device)
+            rec.onFailure = { [weak self] message in
+                guard let self, self.model.renderer?.recorder === rec else { return }
+                self.model.showToast("録画が中断されました: \(message)")
+                self.stopRecording(reveal: false)
             }
+            r.recorder = rec
+            model.recording = true
+            model.showToast("録画を開始しました")
+            return true
+        } catch {
+            model.showToast("録画を開始できませんでした: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    func stopRecording(reveal: Bool, completion: ((URL?) -> Void)? = nil) {
+        guard let r = model.renderer, let rec = r.recorder else { completion?(nil); return }
+        r.recorder = nil
+        model.recording = false
+        rec.finish { [model] url in
+            if let url {
+                model.showToast("録画を保存しました(ムービー/箱庭)")
+                if reveal { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+            } else {
+                model.showToast("録画の保存に失敗しました")
+            }
+            completion?(url)
         }
     }
 
