@@ -34,6 +34,8 @@ public struct SimConfig: Codable, Sendable, Equatable {
 
     // Metabolism
     public var energyPerMass: Float = 30
+    /// Energy locked in body tissue per unit of mass (released as meat on death).
+    public var bodyPerMass: Float = 10
     public var baseCost: Float = 0.55        // * mass^0.75 per second
     public var moveCost: Float = 0.12        // * mass * thrust^2 per second
     public var turnCost: Float = 0.02

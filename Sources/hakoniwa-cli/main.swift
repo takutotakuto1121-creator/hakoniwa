@@ -116,6 +116,32 @@ case "bench":
         }
     }
 
+case "sweep":
+    // Runs several seeds and checks the ecological acceptance criteria.
+    let seeds = (option("--seeds") ?? "1,2,3").split(separator: ",").compactMap { UInt64($0) }
+    let hours = Double(option("--hours") ?? "2") ?? 2
+    print("seed   pop(min/max/end)   carn% max  carn>=5% longest  max gen  spp  assay x   wall")
+    for sd in seeds {
+        let t0 = Date()
+        let w = World(config: config, seed: sd)
+        w.step(Int(hours * 3600 * Double(config.ticksPerSecond)))
+        let pops = w.samples.map { Int($0.population) }
+        let fracs = w.samples.map { Double($0.carnivores) / Double(max($0.population, 1)) }
+        // Longest stretch with carnivores at or above 5% of the population.
+        var longest = 0, run = 0
+        for f in fracs { run = f >= 0.05 ? run + 1 : 0; longest = max(longest, run) }
+        let longestMinutes = Double(longest) * Double(w.sampleInterval) / Double(config.ticksPerSecond) / 60
+        let a0 = World.assay(World.primordialGenomes(150, seed: sd, config: config), base: config, seconds: 90)
+        let a1 = World.assay(w.sampleGenomes(150), base: config, seconds: 90)
+        print(String(format: "%4d   %5d/%5d/%5d   %6.1f   %9.0f min  %7d  %3d  %6.2f  %5.0fs",
+                     sd, pops.min() ?? 0, pops.max() ?? 0, w.aliveCount, (fracs.max() ?? 0) * 100, longestMinutes,
+                     w.maxGeneration, w.samples.last?.species ?? 0, a1.energyPerMinute / max(a0.energyPerMinute, 1e-9),
+                     Date().timeIntervalSince(t0)))
+        if let dir = option("--save-dir") {
+            try w.save(to: URL(fileURLWithPath: dir).appendingPathComponent("sweep-\(sd).hkw"))
+        }
+    }
+
 case "assay":
     // Compare evolved creatures from a saved world with primordial ones.
     let count = Int(option("--count") ?? "200") ?? 200

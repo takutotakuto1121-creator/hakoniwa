@@ -56,6 +56,8 @@ public final class World {
     let lost: UnsafeMutablePointer<Float>
     /// Current body radius, refreshed every tick in the act phase.
     let rad: UnsafeMutablePointer<Float>
+    /// Energy invested in body tissue while growing; becomes meat on death.
+    let body: UnsafeMutablePointer<Float>
     let eggTimer: UnsafeMutablePointer<Float>
     let lastMeal: UnsafeMutablePointer<Float>
     let biteTarget: UnsafeMutablePointer<Int32>
@@ -136,7 +138,7 @@ public final class World {
         generation = a(n, 0); birthTick = a(n, 0)
         pos = a(n, .zero); vel = a(n, .zero); push = a(n, .zero)
         heading = a(n, 0); energy = a(n, 0); health = a(n, 0); age = a(n, 0); hurt = a(n, 0)
-        signal1 = a(n, 0); signal2 = a(n, 0); swimPhase = a(n, 0); lost = a(n, 0); rad = a(n, 1); eggTimer = a(n, 0)
+        signal1 = a(n, 0); signal2 = a(n, 0); swimPhase = a(n, 0); lost = a(n, 0); rad = a(n, 1); body = a(n, 0); eggTimer = a(n, 0)
         lastMeal = a(n, 0); biteTarget = a(n, -1); foodTarget = a(n, -1); kills = a(n, 0); offspring = a(n, 0)
         eaten = a(n, 0)
         genes = a(n, Genes(.zero))
@@ -167,7 +169,7 @@ public final class World {
         generation.deallocate(); birthTick.deallocate()
         pos.deallocate(); vel.deallocate(); push.deallocate()
         heading.deallocate(); energy.deallocate(); health.deallocate(); age.deallocate(); hurt.deallocate()
-        signal1.deallocate(); signal2.deallocate(); swimPhase.deallocate(); lost.deallocate(); rad.deallocate(); eggTimer.deallocate()
+        signal1.deallocate(); signal2.deallocate(); swimPhase.deallocate(); lost.deallocate(); rad.deallocate(); body.deallocate(); eggTimer.deallocate()
         lastMeal.deallocate(); biteTarget.deallocate(); foodTarget.deallocate(); kills.deallocate()
         offspring.deallocate(); eaten.deallocate()
         genes.deallocate(); pheno.deallocate(); conns.deallocate(); connCount.deallocate(); connSplit.deallocate()
@@ -257,6 +259,7 @@ public final class World {
         push[i] = .zero
         heading[i] = rng.float(-.pi, .pi)
         energy[i] = e
+        body[i] = 0
         genes[i] = g
         pheno[i] = Phenotype(g, config)
         age[i] = 0
@@ -669,6 +672,13 @@ public final class World {
                 cost += dh * c.regenCost * 0.1
             }
             if health[i] > mh { health[i] = mh }
+            // Growth: move energy into body tissue up to what the current size requires.
+            let bodyTarget = c.bodyPerMass * mass
+            if body[i] < bodyTarget && !assayMode {
+                let grow = min(bodyTarget - body[i], max(energy[i] - cost, 0))
+                body[i] += grow
+                energy[i] -= grow
+            }
             let e = energy[i]
             if cost > e {
                 lost[i] = max(e, 0)
@@ -822,7 +832,8 @@ public final class World {
     }
 
     func die(_ i: Int, cause: DeathCause) {
-        let remaining = max(energy[i], 0)
+        let remaining = max(energy[i], 0) + body[i]
+        body[i] = 0
         // Bodies are worth more than their stored energy only through that energy itself,
         // so total energy stays conserved.
         if remaining > 0 { addMeat(remaining, at: pos[i], spread: radius(i) * 0.6 + 2) }
@@ -976,7 +987,7 @@ public final class World {
     public func measuredTotalEnergy() -> Float {
         var e: Double = Double(soil) + Double(plantAccumulator) * 0
         for k in 0..<foodCount { e += Double(max(foodEnergy[k], 0)) }
-        for i in 0..<highWater where stage[i] != 0 { e += Double(max(energy[i], 0)) }
+        for i in 0..<highWater where stage[i] != 0 { e += Double(max(energy[i], 0)) + Double(body[i]) }
         return Float(e)
     }
 }
