@@ -11,8 +11,8 @@
 macOS 15 以降、Apple Silicon、Xcode(Swift 6)が必要です。
 
 ```sh
-scripts/build-app.sh          # build/Hakoniwa.app ができる
-open build/Hakoniwa.app
+make open        # ビルドして起動(build/Hakoniwa.app)
+make             # できることの一覧
 ```
 
 ### 操作
@@ -30,11 +30,11 @@ open build/Hakoniwa.app
 画面なしで高速に進化させ、統計を確認できます。
 
 ```sh
-swift build -c release --product hakoniwa-cli
-.build/release/hakoniwa-cli run --seed 1 --hours 4 --save world.hkw   # 4時間分の進化
-.build/release/hakoniwa-cli assay --load world.hkw                    # 第0世代と採餌能力を比較
-.build/release/hakoniwa-cli sweep --seeds 1,2,3 --hours 2             # 複数シードで判定
-.build/release/hakoniwa-cli bench --profile                           # 性能測定
+make evolve SEED=1 HOURS=4     # 4時間分の進化 → out/world.hkw
+make assay                     # 第0世代と採餌能力を比較
+make sweep SEEDS=1,2,3 HOURS=2 # 複数シードで受け入れ基準を判定
+make profile                   # 性能測定
+make showcase SEED=1 HOURS=10  # アプリに同梱する世界を作り直す
 ```
 
 ## 仕組み
@@ -45,5 +45,5 @@ swift build -c release --product hakoniwa-cli
 ## テスト
 
 ```sh
-swift test
+make test
 ```
