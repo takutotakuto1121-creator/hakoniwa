@@ -371,12 +371,12 @@ fragment float4 gradeFragment(GodFSOut in [[stage_in]],
         col += float3(0.0035, 0.0080, 0.0140) * ice;
         // Frost creeping in from the frame.
         float n = gnoise(sp * 0.008) * 0.6 + gnoise(sp * 0.021) * 0.4;
-        float reach = mix(1.05, 0.66, ice);
-        float mask = smoothstep(reach, reach + 0.22, edge + (n - 0.5) * 0.45);
+        float reach = mix(1.05, 0.76, ice);
+        float mask = smoothstep(reach, reach + 0.18, edge + (n - 0.5) * 0.40);
         float veins = ridged(sp * 0.018);
         float fine = ridged(sp * 0.06 + 7.0);
         float3 frost = float3(0.060, 0.095, 0.140) * (0.35 + 1.4 * veins + 0.6 * fine);
-        col = mix(col, col * 0.35 + frost, mask * 0.9);
+        col = mix(col, col * 0.45 + frost, mask * 0.8);
         // Glints in the frost.
         float2 gc = floor(sp / 7.0);
         float tw = pow(0.5 + 0.5 * sin(t * (2.0 + ghash12(gc) * 3.0) + ghash12(gc + 3.0) * 30.0), 12.0);
@@ -392,17 +392,17 @@ fragment float4 gradeFragment(GodFSOut in [[stage_in]],
         float warm = u.warm;
         float l2 = dot(col, float3(0.2126, 0.7152, 0.0722));
         col = max(mix(float3(l2), col, 1.0 + 0.30 * warm), 0.0);
-        col *= mix(float3(1.0), float3(1.22, 1.04, 0.78), warm);
-        col += float3(0.0060, 0.0036, 0.0008) * warm;
+        col *= mix(float3(1.0), float3(1.32, 1.06, 0.68), warm);
+        col += float3(0.0090, 0.0050, 0.0010) * warm;
         // Sun shafts slanting from the upper left.
         float2 dir = normalize(float2(0.85, 0.52));
         float across = dot(sp, float2(-dir.y, dir.x));
         float rays = pow(gnoise(float2(across * 0.010, t * 0.06)), 2.5) * 0.7
                    + pow(gnoise(float2(across * 0.026 + 9.0, t * 0.09)), 3.0) * 0.5;
         float fall = smoothstep(1.5, 0.0, length(in.uv * float2(u.viewSize.x / u.viewSize.y, 1.0)));
-        col += float3(0.050, 0.030, 0.008) * rays * fall * warm;
+        col += float3(0.110, 0.066, 0.016) * rays * fall * warm;
         // Warm glow at the frame and drifting pollen.
-        col += float3(0.012, 0.005, 0.0) * smoothstep(0.5, 1.1, edge) * warm;
+        col += float3(0.030, 0.012, 0.0) * smoothstep(0.5, 1.1, edge) * warm;
         float m = motes(sp, 80.0, float2(t * 4.0, -t * 9.0), 3.0, 1.4) * 0.7
                 + motes(sp, 150.0, float2(-t * 6.0, -t * 15.0), 11.0, 2.2);
         col += float3(0.40, 0.26, 0.06) * m * warm * 0.45;

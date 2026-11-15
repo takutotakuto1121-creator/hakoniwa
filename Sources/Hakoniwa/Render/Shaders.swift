@@ -435,7 +435,7 @@ fragment float4 creatureFragment(CreatureOut in [[stage_in]],
     bool sick = fmod(floor(c.flags / 16.0), 2.0) >= 1.0;
     if (sick) {
         float l = max(dot(base, float3(0.3, 0.5, 0.2)), 0.18);
-        base = mix(base, float3(0.36, 0.72, 0.05) * l * 1.5, 0.75);
+        base = mix(base, float3(0.20, 0.62, 0.10) * l * 1.3, 0.85);
         deep = mix(deep, float3(0.035, 0.05, 0.0), 0.7);
         glowAmt *= 0.5 + 0.3 * sin(t * 3.7 + c.hue * 30.0);
     }
