@@ -24,6 +24,8 @@ struct LaunchOptions {
     /// Records a movie of `recordSeconds` to this path, then quits (for automated checks).
     var record: String?
     var recordSeconds: Double = 5
+    /// Writes the creature card of the selection (use with `--select-first`) to this path, then quits.
+    var card: String?
 
     /// AppKit pairs up `-key value` arguments as user defaults and treats any argument left over as a
     /// file to open. A value-less flag followed by another option (`--select-first --zoom 2`) leaves `2`
@@ -53,6 +55,7 @@ struct LaunchOptions {
             case "--hide-panels": o.hidePanels = true
             case "--meteor": o.meteor = true
             case "--record": o.record = next()
+            case "--card": o.card = next()
             case "--record-seconds": o.recordSeconds = next().flatMap { Double($0) } ?? 5
             case "--tool": o.tool = next().flatMap { Tool(rawValue: $0) }
             case "--center":

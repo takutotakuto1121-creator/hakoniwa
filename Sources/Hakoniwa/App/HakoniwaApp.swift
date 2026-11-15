@@ -11,7 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let env = AppEnvironment.shared
-        if env.options.screenshot == nil && env.options.record == nil {
+        if env.options.screenshot == nil && env.options.record == nil && env.options.card == nil {
             NSApp.activate(ignoringOtherApps: true)
         } else {
             // Automated capture: stay in the background and ignore stray clicks from the user.
@@ -37,6 +37,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             scheduleScreenshot(path: path, env: env)
         } else if let path = env.options.record {
             scheduleRecording(path: path, env: env)
+        } else if let path = env.options.card {
+            scheduleCard(path: path, env: env)
         }
     }
 
@@ -58,6 +60,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         AppEnvironment.shared.controller.stop()
+    }
+
+    /// `--card PATH`: once the selection's details have arrived, write its creature card and quit.
+    private func scheduleCard(path: String, env: AppEnvironment) {
+        Timer.scheduledTimer(withTimeInterval: 1.0 / 30.0, repeats: true) { timer in
+            guard let r = env.model.renderer else { return }
+            r.view?.draw()
+            guard r.frameCount >= env.options.frames, env.model.detail != nil else { return }
+            timer.invalidate()
+            let t0 = CACurrentMediaTime()
+            if let img = CreatureCard.makeImage(model: env.model), writePNG(img, to: URL(fileURLWithPath: path)) {
+                print("card \(path) \(img.width)x\(img.height) in \(String(format: "%.2f", CACurrentMediaTime() - t0))s")
+            } else {
+                print("card failed")
+            }
+            fflush(stdout)
+            NSApp.terminate(nil)
+        }
     }
 
     /// `--record PATH`: warm up for `--frames` frames, record `--record-seconds`, write the movie and quit.
