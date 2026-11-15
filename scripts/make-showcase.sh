@@ -3,7 +3,7 @@
 #   scripts/make-showcase.sh [seed] [hours]
 set -euo pipefail
 cd "$(dirname "$0")/.."
-SEED="${1:-1}"
+SEED="${1:-4}"
 HOURS="${2:-8}"
 swift build -c release --product hakoniwa-cli
 mkdir -p Resources
