@@ -4,7 +4,7 @@ import Observation
 import SwiftUI
 
 enum Tool: String, CaseIterable, Identifiable {
-    case select, food, spawn, remove, meteor
+    case select, food, spawn, remove, meteor, wall, eraseWall
     var id: String { rawValue }
     var label: String {
         switch self {
@@ -13,6 +13,8 @@ enum Tool: String, CaseIterable, Identifiable {
         case .spawn: return "生き物を置く"
         case .remove: return "取り除く"
         case .meteor: return "隕石"
+        case .wall: return "壁を描く"
+        case .eraseWall: return "壁を消す"
         }
     }
     var symbol: String {
@@ -22,6 +24,8 @@ enum Tool: String, CaseIterable, Identifiable {
         case .spawn: return "plus.circle.fill"
         case .remove: return "minus.circle.fill"
         case .meteor: return "flame.fill"
+        case .wall: return "mountain.2.fill"
+        case .eraseWall: return "eraser.fill"
         }
     }
     var radius: Float {
@@ -29,6 +33,8 @@ enum Tool: String, CaseIterable, Identifiable {
         case .food: return 70
         case .meteor: return 260
         case .remove: return 14
+        case .wall: return GodActions.wallRadius
+        case .eraseWall: return GodActions.eraseRadius
         default: return 0
         }
     }
@@ -39,6 +45,8 @@ enum Tool: String, CaseIterable, Identifiable {
         case .spawn: return "C"
         case .remove: return "X"
         case .meteor: return "M"
+        case .wall: return "W"
+        case .eraseWall: return "E"
         }
     }
 }

@@ -91,6 +91,8 @@ final class Renderer: NSObject, MTKViewDelegate {
     private var bloomMips: [MTLTexture] = []
     private var fertilityTexture: MTLTexture
     private var fertilityTick: Int64 = -2
+    /// Walls, sickness and climate effects.
+    private var god: GodLayer?
 
     private let inflight = DispatchSemaphore(value: 3)
     private var frameIndex = 0
@@ -154,6 +156,7 @@ final class Renderer: NSObject, MTKViewDelegate {
             NSLog("Shader compilation failed: \(error)")
             return nil
         }
+        god = GodLayer(device: device)
         let ws = controller.withFront { $0.worldSize }
         camera.worldSize = ws
         camera.center = ws * 0.5
@@ -366,6 +369,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         u.pixelRatio = camera.pixelRatio
         u.season = season
         u.selected = Float(selIdx)
+        god?.update(camera: camera, bridge: controller.god, dt: dt, time: t, extrap: extrap)
         _ = tps
 
         guard let cmd = queue.makeCommandBuffer() else { inflight.signal(); return }
@@ -382,6 +386,7 @@ final class Renderer: NSObject, MTKViewDelegate {
             enc.setFragmentBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 0)
             enc.setFragmentTexture(fertilityTexture, index: 0)
             enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+            god?.drawWalls(enc)
             for off in camera.visibleOffsets() {
                 u.offset = off
                 if foodCount > 0 {
@@ -399,6 +404,7 @@ final class Renderer: NSObject, MTKViewDelegate {
                     enc.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4, instanceCount: np)
                 }
                 if creatureCount > 0 {
+                    god?.drawMiasma(enc, creatures: cbuf.buffer, count: creatureCount, offset: off)
                     enc.setRenderPipelineState(creaturePipeline)
                     enc.setVertexBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 0)
                     enc.setFragmentBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 0)
@@ -415,6 +421,7 @@ final class Renderer: NSObject, MTKViewDelegate {
                     enc.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4, instanceCount: rings.count)
                 }
             }
+            god?.drawGrade(enc)
             enc.endEncoding()
         }
 
