@@ -22,6 +22,15 @@ struct LaunchOptions {
     var windowSize: CGSize?
     var meteor = false
 
+    /// AppKit pairs up `-key value` arguments as user defaults and treats any argument left over as a
+    /// file to open. A value-less flag followed by another option (`--select-first --zoom 2`) leaves `2`
+    /// unpaired, AppKit then "opens" it instead of creating the main window, and the app shows nothing.
+    /// Our options are parsed by `parse`, so tell AppKit to ignore stray arguments.
+    /// Must run before `NSApplication` finishes launching.
+    static func shieldFromAppKit() {
+        UserDefaults.standard.register(defaults: ["NSTreatUnknownArgumentsAsOpen": "NO"])
+    }
+
     static func parse(_ args: [String]) -> LaunchOptions {
         var o = LaunchOptions()
         var i = 1
@@ -101,6 +110,7 @@ final class AppEnvironment {
 
     private init() {
         options = LaunchOptions.parse(CommandLine.arguments)
+        LaunchOptions.shieldFromAppKit()
         var world: World?
         if let path = options.load {
             do { world = try World.load(from: URL(fileURLWithPath: path)) } catch {
