@@ -11,6 +11,7 @@ struct InspectorPanel: View {
                 VStack(alignment: .leading, spacing: 14) {
                     header(d)
                     vitals(d)
+                    if !d.isEgg { VisionToggleRow(model: model, detail: d) }
                     brain(d)
                     genes(d)
                     lineage

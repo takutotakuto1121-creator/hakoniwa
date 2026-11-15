@@ -80,6 +80,7 @@ final class SimulationController: @unchecked Sendable {
     private var _paused = false
     private var _stepRequests = 0
     private var _selected: UInt64 = 0
+    private var _externalClock = false
     private var running = true
     private var thread: Thread?
     private(set) var publishTime: CFTimeInterval = CACurrentMediaTime()
@@ -108,6 +109,13 @@ final class SimulationController: @unchecked Sendable {
     var selectedUid: UInt64 {
         get { lock.lock(); defer { lock.unlock() }; return _selected }
         set { lock.lock(); _selected = newValue; lock.unlock() }
+    }
+
+    /// When set, the world advances only through `perform`/`requestStep`, while `paused` stays
+    /// false so the renderer keeps interpolating motion. The duel arenas use this to run in lockstep.
+    var externalClock: Bool {
+        get { lock.lock(); defer { lock.unlock() }; return _externalClock }
+        set { lock.lock(); _externalClock = newValue; lock.unlock() }
     }
 
     func requestStep(_ n: Int = 1) { lock.lock(); _stepRequests += n; lock.unlock() }
@@ -163,7 +171,7 @@ final class SimulationController: @unchecked Sendable {
             lock.lock()
             let cmds = commands
             commands.removeAll()
-            let speed = _speed, paused = _paused
+            let speed = _speed, paused = _paused || _externalClock
             let steps = _stepRequests
             _stepRequests = 0
             lock.unlock()

@@ -89,6 +89,8 @@ final class AppModel {
     var detail: CreatureDetail?
     var lineage: [SpeciesInfo] = []
     var following = false
+    /// Draw the selected creature's field of view on the world.
+    var showVision = true
     var selectedSpecies: Int32?
 
     // Controls
