@@ -73,6 +73,8 @@ final class EncyclopediaStore {
     @ObservationIgnored private var jumpCursor: [Int32: Int] = [:]
     @ObservationIgnored private var wasRenderingPaused = false
     @ObservationIgnored let portraitFactory = PortraitFactory()
+    /// Species ids are reused by every world, so portraits drawn for a previous world are dropped.
+    @ObservationIgnored private var portraitEpoch = 0
 
     /// At most this many samples per species; older ones are thinned when it fills up.
     static let maxSamples = 360
@@ -126,6 +128,7 @@ final class EncyclopediaStore {
             jumpCursor = [:]
             portraits = [:]
             portraitFactory.clear()
+            portraitEpoch += 1
             if detailId != nil { detailId = nil }
             self.entries = [:]
         }
@@ -210,7 +213,8 @@ final class EncyclopediaStore {
         case .birth:
             list.sort { $0.info.birthTick != $1.info.birthTick ? $0.info.birthTick < $1.info.birthTick : $0.id < $1.id }
         case .diet:
-            list.sort { $0.info.meanDiet != $1.info.meanDiet ? $0.info.meanDiet < $1.info.meanDiet : $0.id < $1.id }
+            // Carnivores first: they are the rarer and more striking ones.
+            list.sort { $0.info.meanDiet != $1.info.meanDiet ? $0.info.meanDiet > $1.info.meanDiet : $0.id < $1.id }
         }
         return list
     }
@@ -297,15 +301,17 @@ final class EncyclopediaStore {
         let size = large ? Self.largeSize : Self.smallSize
         // Living portraits follow the population as it evolves; founders never change.
         let cacheable = kind == .founder
+        let epoch = portraitEpoch
         portraitFactory.request(key: key, genes: g, seed: UInt64(id) &* 0x9E37_79B9 &+ 17, width: size.0, height: size.1,
                                 desaturate: extinct) { [weak self] img in
-            guard let self, let img else { return }
+            guard let self, let img, epoch == self.portraitEpoch else { return }
             self.portraits[key] = img
             if !cacheable {
                 // Redraw the living look again later.
                 DispatchQueue.main.asyncAfter(deadline: .now() + 20) { [weak self] in
-                    self?.portraits[key] = nil
-                    self?.portraitFactory.forget(key)
+                    guard let self, epoch == self.portraitEpoch else { return }
+                    self.portraits[key] = nil
+                    self.portraitFactory.forget(key)
                 }
             }
         }
@@ -339,11 +345,11 @@ final class PortraitFactory: @unchecked Sendable {
                 let f = CIFilter(name: "CIColorControls")
                 f?.setValue(CIImage(cgImage: src), forKey: kCIInputImageKey)
                 f?.setValue(0.12, forKey: kCIInputSaturationKey)
-                f?.setValue(-0.04, forKey: kCIInputBrightnessKey)
-                if let out = f?.outputImage, let cg = ci.createCGImage(out, from: out.extent) { img = cg }
-            }
-            if let dir = ProcessInfo.processInfo.environment["HAKONIWA_DUMP_PORTRAITS"], let img {
-                writePNG(img, to: URL(fileURLWithPath: dir).appendingPathComponent("\(key).png"))
+                // Faded, like an old specimen.
+                let dim = CIFilter(name: "CIExposureAdjust")
+                dim?.setValue(f?.outputImage, forKey: kCIInputImageKey)
+                dim?.setValue(-0.7, forKey: kCIInputEVKey)
+                if let out = dim?.outputImage, let cg = ci.createCGImage(out, from: out.extent) { img = cg }
             }
             DispatchQueue.main.async { completion(img) }
         }
