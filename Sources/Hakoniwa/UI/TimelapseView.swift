@@ -105,7 +105,8 @@ final class TimelapsePlayer {
         model.following = false
         let cam = renderer.camera
         savedCamera = (cam.targetCenter, cam.targetZoom)
-        cam.targetZoom = cam.minZoom
+        // Wide enough to see migrations, close enough that crowded late worlds stay legible.
+        cam.targetZoom = cam.clampZoom(0.5 * cam.pixelRatio)
 
         if let s = seek {
             time = startTime + span * min(max(s, 0), 1)
