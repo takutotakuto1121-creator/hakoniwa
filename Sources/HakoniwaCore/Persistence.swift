@@ -98,7 +98,7 @@ private struct Reader {
 }
 
 extension World {
-    public static let fileVersion = 1
+    public static let fileVersion = 2
     static let magic: UInt64 = 0x4448_574B_4E48_4B48  // "HKHNKWHD"
 
     public func save(to url: URL) throws {
@@ -123,7 +123,7 @@ extension World {
             },
             events: events.map { EventDTO(id: $0.id, tick: $0.tick, kind: $0.kind, message: $0.message, speciesId: $0.speciesId) },
             samples: samples)
-        let metaData = try JSONEncoder().encode(meta)
+        let metaData = try (JSONEncoder().encode(meta) as NSData).compressed(using: .lzfse) as Data
         var w = Writer()
         let n = highWater
         w.raw(stage, n); w.raw(uid, n); w.raw(parentUid, n); w.raw(speciesOf, n); w.raw(generation, n)
@@ -158,7 +158,8 @@ extension World {
         let version = Int(try r.u64())
         guard version == fileVersion else { throw PersistenceError.unsupportedVersion(version) }
         let metaLen = Int(try r.u64())
-        let meta = try JSONDecoder().decode(MetaDTO.self, from: try r.bytes(metaLen))
+        let metaRaw = try (r.bytes(metaLen) as NSData).decompressed(using: .lzfse) as Data
+        let meta = try JSONDecoder().decode(MetaDTO.self, from: metaRaw)
         let bodyLen = Int(try r.u64())
         let compressed = try r.bytes(bodyLen)
         let body = try (compressed as NSData).decompressed(using: .lzfse) as Data
