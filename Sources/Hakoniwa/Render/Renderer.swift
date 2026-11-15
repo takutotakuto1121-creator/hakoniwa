@@ -120,6 +120,9 @@ final class Renderer: NSObject, MTKViewDelegate {
     var recorder: VideoRecorder?
     private lazy var scaler = MPSImageBilinearScale(device: device)
 
+    /// Field of view of the selected creature.
+    private lazy var vision = VisionOverlay(device: device)
+
     /// Tool cursor (world position + radius) drawn as a dashed ring.
     var hover: (position: V2, radius: Float, color: SIMD4<Float>)?
 
@@ -319,6 +322,9 @@ final class Renderer: NSObject, MTKViewDelegate {
         selectedRadius = selRad
         if follow, let p = selectedPosition { camera.targetCenter = p }
         camera.update(dt: dt)
+        vision?.update(creature: selIdx >= 0 ? cbuf.buffer.contents().bindMemory(to: CreatureInstance.self, capacity: creatureCount)[selIdx] : nil,
+                       detail: model?.detail, selectedUid: selectedUid, enabled: model?.showVision ?? false,
+                       camera: camera, extrap: extrap, time: Float(now - startTime), dt: dt)
 
         // Effects.
         let fxBudget = speed == .max ? 4 : (speed.multiplier > 16 ? 8 : (speed.multiplier > 4 ? 40 : 400))
@@ -385,6 +391,7 @@ final class Renderer: NSObject, MTKViewDelegate {
                     enc.setVertexBuffer(fbuf.buffer, offset: 0, index: 1)
                     enc.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4, instanceCount: foodCount)
                 }
+                vision?.encode(enc, offset: off)
                 if np > 0 {
                     enc.setRenderPipelineState(particlePipeline)
                     enc.setVertexBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 0)
