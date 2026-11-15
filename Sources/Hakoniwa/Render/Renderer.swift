@@ -123,6 +123,10 @@ final class Renderer: NSObject, MTKViewDelegate {
     /// Tool cursor (world position + radius) drawn as a dashed ring.
     var hover: (position: V2, radius: Float, color: SIMD4<Float>)?
 
+    /// When set and returning a snapshot, frames are drawn from it instead of the live
+    /// simulation (time-lapse playback). Called on the main thread once per frame.
+    var snapshotSource: ((CFTimeInterval) -> RenderSnapshot?)?
+
     init?(view: MTKView, controller: SimulationController) {
         guard let device = view.device ?? MTLCreateSystemDefaultDevice(), let q = device.makeCommandQueue() else { return nil }
         self.device = device
@@ -267,7 +271,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         var selIdx = -1
         var selPos: V2?
         var selRad: Float = 0
-        controller.withFront { snap in
+        func consume(_ snap: RenderSnapshot) {
             camera.worldSize = snap.worldSize
             tps = snap.ticksPerSecond
             season = snap.season
@@ -303,6 +307,12 @@ final class Renderer: NSObject, MTKViewDelegate {
             if !paused && (speed == .x1 || speed == .x4) {
                 extrap = Float(min((now - controller.publishTime) * speed.multiplier, 1.2 / Double(snap.ticksPerSecond)))
             }
+        }
+        if let external = snapshotSource?(now) {
+            consume(external)
+            extrap = 0
+        } else {
+            controller.withFront(consume)
         }
         if let p = selPos, selIdx >= 0 {
             let c = cbuf.buffer.contents().bindMemory(to: CreatureInstance.self, capacity: creatureCount)[selIdx]

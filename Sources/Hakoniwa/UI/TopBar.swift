@@ -122,6 +122,7 @@ struct TopBar: View {
                 model.togglePause()
             }
             iconButton("forward.frame.fill", help: "1ステップ (.)") { model.step() }
+            iconButton("film.stack", help: "進化のタイムラプス (L)") { TimelapsePlayer.shared.start() }
             iconButton("square.split.bottomrightquarter", help: "下のパネル (B)") { model.showBottom.toggle() }
             iconButton("eye.slash", help: "パネルを隠す (H)") { model.showPanels = false }
             iconButton("plus.square.on.square", help: "新しい世界 (⌘N)") { model.showNewWorldSheet = true }

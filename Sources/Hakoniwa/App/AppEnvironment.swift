@@ -21,6 +21,8 @@ struct LaunchOptions {
     var tool: Tool?
     var windowSize: CGSize?
     var meteor = false
+    var timelapse: Double?
+    var timelapsePlay = false
 
     static func parse(_ args: [String]) -> LaunchOptions {
         var o = LaunchOptions()
@@ -40,6 +42,8 @@ struct LaunchOptions {
             case "--paused": o.paused = true
             case "--hide-panels": o.hidePanels = true
             case "--meteor": o.meteor = true
+            case "--timelapse": o.timelapse = next().flatMap { Double($0) }
+            case "--timelapse-play": o.timelapsePlay = true
             case "--tool": o.tool = next().flatMap { Tool(rawValue: $0) }
             case "--center":
                 if let s = next() {
@@ -134,6 +138,10 @@ final class AppEnvironment {
         if let c = options.center {
             r.camera.targetCenter = c
             r.camera.center = c
+        }
+        if let f = options.timelapse {
+            let play = options.timelapsePlay
+            DispatchQueue.main.async { TimelapsePlayer.shared.start(seek: f, play: play) }
         }
         if options.selectFirst {
             let center = options.center ?? r.camera.center

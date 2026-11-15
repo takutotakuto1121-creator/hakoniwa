@@ -40,7 +40,7 @@ struct CreatureInstance {
     float eyes;
     float energy;
     float hurt;
-    float flags;
+    float flags;         // integer bits; the fractional part fades the creature out (time-lapse)
     float maturity;
     float signal;
 };
@@ -431,6 +431,7 @@ fragment float4 creatureFragment(CreatureOut in [[stage_in]],
     float3 deep = srgbToLinear(hsv2rgb(c.hue + 0.04, min(1.0, sat + 0.15), 0.30));
     float hurt = c.hurt * (0.6 + 0.4 * sin(t * 30.0));
     float glowAmt = 0.35 + 1.1 * energy;
+    float vis = 1.0 - fract(c.flags);
 
     // LOD: far away creatures are luminous dots.
     float lod = smoothstep(2.0, 5.0, in.pxPerUnit);
@@ -464,7 +465,7 @@ fragment float4 creatureFragment(CreatureOut in [[stage_in]],
         col += float3(1.0) * spec * 0.65 * cover;
         col += base * exp(-max(d, 0.0) * 3.5) * 0.18 * beat * (1.0 - cover);
         float alpha = cover * (0.30 + 0.55 * ecov + 0.3 * rim);
-        return float4(col, alpha);
+        return float4(col, alpha) * vis;
     }
 
     float3 color = float3(0);
@@ -477,7 +478,7 @@ fragment float4 creatureFragment(CreatureOut in [[stage_in]],
         dot = mix(dot, float3(1.6, 0.1, 0.05), hurt * 0.7);
         color = dot * (1.0 - lod);
         alpha = core * 0.8 * (1.0 - lod);
-        if (lod <= 0.0) return float4(color, alpha);
+        if (lod <= 0.0) return float4(color, alpha) * vis;
     }
 
     BodySample b = sampleBody(p, c, t);
@@ -576,7 +577,7 @@ fragment float4 creatureFragment(CreatureOut in [[stage_in]],
     col += base * sring * 0.9;
     float a = max(cover, max(finCover * 0.55, jawCover));
     float4 detailed = float4(col * lod, a * lod);
-    return float4(color + detailed.rgb, max(alpha, detailed.a));
+    return float4(color + detailed.rgb, max(alpha, detailed.a)) * vis;
 }
 
 // MARK: - Particles
