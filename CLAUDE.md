@@ -11,6 +11,7 @@
 - `Sources/HakoniwaCore` — シミュレーション(UI 非依存)。公開 API は `Inspection.swift`(描画・詳細・介入)、`Features.swift`(壁・気候・疫病・復活・伝記・英雄・履歴・対決用アリーナ)、`World.swift`、`Persistence.swift`。
 - `Sources/Hakoniwa` — アプリ(Metal 描画 `Render/`、SwiftUI `UI/`、`Simulation/SimulationController.swift` が World を専用スレッドで回す)。
 - `Sources/hakoniwa-cli` — ヘッドレス実行。
+- `Sources/HakoniwaSaver` — スクリーンセーバー(`make saver`。SwiftPM ではなく `scripts/build-saver.sh` が swiftc でアプリの描画コードと一緒にビルドする。Renderer が AppModel/SoundEngine の新しいメンバーを使うと `AppShims.swift` の更新が必要)。
 - `docs/REQUIREMENTS.md`, `docs/DESIGN.md`。
 
 ## 守ること
