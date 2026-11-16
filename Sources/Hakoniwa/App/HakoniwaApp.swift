@@ -132,7 +132,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             r.view?.draw()
         }
         Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { timer in
-            guard let r = env.model.renderer, r.frameCount >= target, let window = NSApp.windows.first(where: { $0.isVisible }) else { return }
+            guard let r = env.model.renderer, r.frameCount >= target, DemoLaunch.readyToCapture, let window = NSApp.windows.first(where: { $0.isVisible }) else { return }
             timer.invalidate()
             env.captureWindow(window) { img in
                 if let img {
@@ -154,6 +154,8 @@ enum KeyHandler {
         // Leave typing in text fields alone.
         if let responder = NSApp.keyWindow?.firstResponder, responder is NSText { return false }
         if event.modifierFlags.intersection([.command, .control, .option]).isEmpty == false { return false }
+        if IntroCoordinator.shared.handleKey(event) { return true }
+        if DemoDirector.shared.handleKey(event) { return true }
         if DuelCoordinator.shared.handleKey(event) { return true }
         if TimelapsePlayer.shared.active { return TimelapsePlayer.shared.handleKey(event) }
         if EncyclopediaStore.shared.handleKey(event) { return true }
@@ -242,6 +244,11 @@ struct HakoniwaApp: App {
             CommandGroup(after: .sidebar) {
                 Button(env.model.showPanels ? "パネルを隠す" : "パネルを表示") { env.model.showPanels.toggle() }
                     .keyboardShortcut("\\")
+                Button(DemoDirector.shared.isActive ? "デモモードを終了" : "デモモード") { DemoDirector.shared.toggle() }
+                    .keyboardShortcut("d", modifiers: [.command, .shift])
+            }
+            CommandGroup(after: .help) {
+                Button("はじめての方へ(イントロを表示)") { IntroCoordinator.shared.present() }
             }
         }
     }

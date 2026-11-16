@@ -137,11 +137,13 @@ struct TopBar: View {
                 model.togglePause()
             }
             iconButton("forward.frame.fill", help: "1ステップ (.)") { model.step() }
+            iconButton("sparkles.tv", help: "デモモード — 見どころをカメラが自動で巡る (⇧⌘D)") { DemoDirector.shared.start() }
             iconButton("book.pages.fill", help: "種の図鑑 (⌘E)") { EncyclopediaStore.shared.open() }
-            iconButton("star.fill", help: "お気に入りの個体 (⌘K)") { PetStore.shared.showFavorites.toggle() }
             iconButton("flag.2.crossed.fill", help: "世代対決 — 第0世代と進化後を比べる (⌘D)") { DuelCoordinator.shared.open() }
             iconButton("film.stack", help: "進化のタイムラプス (L)") { TimelapsePlayer.shared.start() }
             Menu {
+                Button("お気に入りの個体 (⌘K)") { PetStore.shared.showFavorites.toggle() }
+                Divider()
                 Button("下のパネルを切り替え (B)") { model.showBottom.toggle() }
                 Button("パネルをすべて隠す (H)") { model.showPanels = false }
                 Divider()

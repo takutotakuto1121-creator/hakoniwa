@@ -125,6 +125,10 @@ final class Renderer: NSObject, MTKViewDelegate {
 
     /// Tool cursor (world position + radius) drawn as a dashed ring.
     var hover: (position: V2, radius: Float, color: SIMD4<Float>)?
+    /// Takes over the camera each frame (demo mode): called with the frame time and the motion extrapolation.
+    var cameraDriver: ((Renderer, Float, Float) -> Void)?
+    /// Hides the selection ring (the demo mode selects creatures only to show their field of view).
+    var hidesSelectionRing = false
 
     /// When set and returning a snapshot, frames are drawn from it instead of the live
     /// simulation (time-lapse playback). Called on the main thread once per frame.
@@ -332,6 +336,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         selectedPosition = selPos.map { camera.wrap($0) }
         selectedRadius = selRad
         if follow, let p = selectedPosition { camera.targetCenter = p }
+        cameraDriver?(self, dt, extrap)
         camera.update(dt: dt)
         vision?.update(creature: selIdx >= 0 ? cbuf.buffer.contents().bindMemory(to: CreatureInstance.self, capacity: creatureCount)[selIdx] : nil,
                        detail: model?.detail, selectedUid: selectedUid, enabled: model?.showVision ?? false,
@@ -355,7 +360,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         // Rings: selection + tool cursor.
         var rings: [GPURing] = []
         let t = Float(now - startTime)
-        if let p = selectedPosition {
+        if let p = selectedPosition, !hidesSelectionRing {
             let r = selRad * 1.3 + 8 * camera.pixelRatio / camera.zoom
             rings.append(GPURing(position: p, radius: r, thickness: 1.2 * camera.pixelRatio,
                                  color: SIMD4(0.55, 0.85, 1.0, 0.9) * 0.9, dash: 14, spin: 0.5))
