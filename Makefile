@@ -3,6 +3,7 @@
 #   make            使い方を表示
 #   make app        アプリをビルド(build/Hakoniwa.app)
 #   make open       ビルドして起動
+#   make saver      スクリーンセーバーをビルド(build/Hakoniwa.saver)
 #
 # 変数は make evolve SEED=3 HOURS=6 のように上書きできる。
 
@@ -16,7 +17,7 @@ CLI      := .build/release/hakoniwa-cli
 APP      := build/Hakoniwa.app
 
 .DEFAULT_GOAL := help
-.PHONY: help app open run cli test bench profile evolve assay sweep showcase clean distclean
+.PHONY: help app open saver saver-preview run cli test bench profile evolve assay sweep showcase clean distclean
 
 help: ## この一覧を表示
 	@echo "使い方: make <ターゲット> [SEED=1 HOURS=4 SEEDS=1,2,3 WORLD=out/world.hkw]"
@@ -28,6 +29,13 @@ app: ## アプリをビルド(build/Hakoniwa.app)
 
 open: app ## アプリをビルドして起動
 	open $(APP)
+
+saver: ## スクリーンセーバーをビルド(build/Hakoniwa.saver。ダブルクリックでインストール)
+	scripts/build-saver.sh
+
+saver-preview: ## スクリーンセーバーを窓で動かしてスクリーンショットを保存(build/saver-shots)
+	scripts/build-saver.sh --preview
+	build/saver-preview --shots 3,20,40 --follow-at 25
 
 run: ## アプリをビルドせずにデバッグ実行(swift run)
 	swift run -c release Hakoniwa
