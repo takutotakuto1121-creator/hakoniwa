@@ -483,7 +483,10 @@ fragment float4 creatureFragment(CreatureOut in [[stage_in]],
         float dd = length(p - float2(-bodyLength(c) * 0.4, 0.0)) - 1.0 - bodyLength(c) * 0.3;
         float core = smoothstep(1.2, -0.6, dd);
         float3 dot = base * (0.6 + 1.2 * energy) * core * 1.6 + base * exp(-max(dd, 0.0) * 1.2) * 0.25;
-        dot = mix(dot, float3(1.6, 0.1, 0.05), hurt * 0.7);
+        // Tint only where the dot actually is; mixing toward a constant red here used to
+        // fill the whole instance quad and showed up as red squares when zoomed out.
+        float3 hurtCol = float3(1.6, 0.1, 0.05) * (core * 1.6 + exp(-max(dd, 0.0) * 1.2) * 0.25);
+        dot = mix(dot, hurtCol, hurt * 0.7);
         color = dot * (1.0 - lod);
         alpha = core * 0.8 * (1.0 - lod);
         if (lod <= 0.0) return float4(color, alpha) * vis;
