@@ -32,7 +32,7 @@ final class CameraDirector {
 
     /// Advances by `dt` seconds and sets the camera targets. `snap` is the newest snapshot.
     func update(dt: Double, camera: Camera, snap: RenderSnapshot) {
-        let pr = camera.pixelRatio
+        let pr = unit(camera)
         if !started {
             // Open on a wide view of a busy place.
             started = true
@@ -95,7 +95,7 @@ final class CameraDirector {
         let dest = interestingPoint(snap: snap, near: fromCenter, camera: camera)
             ?? camera.wrap(fromCenter + direction(rand(0, 2 * .pi)) * Float(rand(400, 800)))
         travel = camera.torusDelta(dest - fromCenter)
-        let wide = wideZoom(camera), mid = 1.25 * camera.pixelRatio
+        let wide = wideZoom(camera), mid = 1.25 * unit(camera)
         toZoom = camera.clampZoom(exp(log(wide) + (log(mid) - log(wide)) * Float(rand(0, 1))))
     }
 
@@ -109,7 +109,7 @@ final class CameraDirector {
         shotLength = rand(22, 34)
         fromCenter = camera.targetCenter
         fromZoom = camera.targetZoom
-        toZoom = camera.clampZoom(Float(rand(2.0, 2.8)) * camera.pixelRatio)
+        toZoom = camera.clampZoom(Float(rand(2.0, 2.8)) * unit(camera))
         return true
     }
 
@@ -150,8 +150,14 @@ final class CameraDirector {
     }
 
     private func wideZoom(_ camera: Camera) -> Float {
-        camera.clampZoom(max(camera.minZoom * 1.2, 0.5 * camera.pixelRatio))
+        camera.clampZoom(max(camera.minZoom * 1.2, 0.5 * unit(camera)))
     }
+
+    /// Zoom 1 = one world unit per point, but never less than two pixels per unit: further out
+    /// the renderer switches creatures to glowing dots, which looks muddy (and draws bitten
+    /// creatures as red squares). Small views such as the System Settings thumbnail therefore
+    /// show a closer crop rather than a shrunken scene.
+    private func unit(_ camera: Camera) -> Float { max(camera.pixelRatio, 2) }
 
     // MARK: - Helpers
 

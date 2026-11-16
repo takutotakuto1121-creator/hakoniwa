@@ -15,7 +15,7 @@ final class HakoniwaSaverView: ScreenSaverView {
     private var world: SharedWorld?
     private var mtkView: MTKView?
     private var renderer: Renderer?
-    private let director = CameraDirector()
+    private var director = CameraDirector()
     private let caption = NSTextField(labelWithString: "")
     private var lastFrame: CFTimeInterval = 0
     private var lastCaption: CFTimeInterval = 0
@@ -61,27 +61,16 @@ final class HakoniwaSaverView: ScreenSaverView {
         if let o = stopObserver { DistributedNotificationCenter.default().removeObserver(o) }
     }
 
-    private func setUp() {
-        guard renderer == nil else { return }
-        guard let w = SharedWorld.acquire() else { return }
-        let v = MTKView(frame: bounds, device: MTLCreateSystemDefaultDevice())
-        v.autoresizingMask = [.width, .height]
-        // Draw only when the screen saver asks for a frame.
-        v.isPaused = true
-        v.enableSetNeedsDisplay = false
-        guard let r = Renderer(view: v, controller: w.controller) else {
-            w.release()
-            return
-        }
-        v.delegate = r
-        addSubview(v)
-        world = w
-        mtkView = v
-        renderer = r
-        setUpCaption()
-        lastFrame = CACurrentMediaTime()
-        cornerSince = lastFrame
+    /// True between `startAnimation` and `stopAnimation`.
+    private var active = false
 
+    private func setUp() {
+        guard !active else { return }
+        active = true
+        SharedWorld.acquire { [weak self] w in
+            guard let self, self.active, self.renderer == nil else { w.release(); return }
+            self.attach(w)
+        }
         // On recent macOS the legacy screen-saver host does not always call `stopAnimation`
         // when the user returns; this notification is the reliable signal.
         if stopObserver == nil {
@@ -93,16 +82,57 @@ final class HakoniwaSaverView: ScreenSaverView {
         }
     }
 
+    private func attach(_ w: SharedWorld) {
+        let v = MTKView(frame: bounds, device: MTLCreateSystemDefaultDevice())
+        v.autoresizingMask = [.width, .height]
+        // Draw only when the screen saver asks for a frame.
+        v.isPaused = true
+        v.enableSetNeedsDisplay = false
+        guard let r = Renderer(view: v, controller: w.controller) else {
+            w.release()
+            return
+        }
+        v.delegate = r
+        v.alphaValue = 0
+        director = CameraDirector()  // frame a new opening shot for the fresh camera
+        addSubview(v)
+        world = w
+        mtkView = v
+        renderer = r
+        setUpCaption()
+        lastFrame = CACurrentMediaTime()
+        cornerSince = lastFrame
+        // Fade in from black once the first frames are drawn.
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 2.5
+            v.animator().alphaValue = 1
+        }
+    }
+
     private func tearDown() {
-        guard renderer != nil else { return }
+        active = false
+        guard let r = renderer else { return }
         mtkView?.delegate = nil
         mtkView?.removeFromSuperview()
         mtkView?.releaseDrawables()
         mtkView = nil
         renderer = nil
+        HakoniwaSaverView.retire(r)
         caption.removeFromSuperview()
         world?.release()
         world = nil
+    }
+
+    /// Frees the renderer once the GPU has finished its frames. Its in-flight semaphore must not be
+    /// destroyed while frames still hold it (libdispatch traps), and their completion handlers
+    /// only hold the renderer weakly. Command buffers on one queue complete in order, so an empty
+    /// buffer committed last completes after all of them.
+    private static func retire(_ r: Renderer) {
+        guard let cmd = r.queue.makeCommandBuffer() else { return }
+        cmd.addCompletedHandler { _ in
+            DispatchQueue.main.async { withExtendedLifetime(r) {} }
+        }
+        cmd.commit()
     }
 
     // MARK: - Frame

@@ -2,8 +2,10 @@
 // checked without installing it. Built by `scripts/build-saver.sh --preview`.
 //
 //   build/saver-preview [--out DIR] [--world FILE] [--size 1280x800] [--shots 3,20,40]
-//                       [--follow-at SECONDS] [--thumbnail]
+//                       [--follow-at SECONDS] [--restart-at SECONDS] [--thumbnail]
 //
+// --restart-at stops the animation and starts it again (as when the screen saver ends and
+// comes back), which reloads the world.
 // --thumbnail runs the view with isPreview = true (the System Settings thumbnail) at 300x188.
 // Prints the average CPU use and peak memory at the end.
 import AppKit
@@ -18,6 +20,7 @@ struct SaverPreview {
         var size = NSSize(width: 1280, height: 800)
         var shots: [Double] = [3, 20, 40]
         var followAt: Double?
+        var restartAt: Double?
         var thumbnail = false
         var args = CommandLine.arguments.dropFirst().makeIterator()
         while let a = args.next() {
@@ -29,6 +32,7 @@ struct SaverPreview {
                 if p.count == 2 { size = NSSize(width: p[0], height: p[1]) }
             case "--shots": shots = (args.next() ?? "").split(separator: ",").compactMap { Double($0) }.sorted()
             case "--follow-at": followAt = Double(args.next() ?? "")
+            case "--restart-at": restartAt = Double(args.next() ?? "")
             case "--thumbnail": thumbnail = true
             default:
                 FileHandle.standardError.write("unknown option \(a)\n".data(using: .utf8)!)
@@ -51,10 +55,20 @@ struct SaverPreview {
         window.makeKeyAndOrderFront(nil)
         let t0 = Date()
         view.startAnimation()
-        print("started in \(String(format: "%.2f", Date().timeIntervalSince(t0))) s")
+        print("startAnimation returned in \(String(format: "%.2f", Date().timeIntervalSince(t0))) s")
 
         if let f = followAt {
             DispatchQueue.main.asyncAfter(deadline: .now() + f) { view.followNow() }
+        }
+        if let r = restartAt {
+            DispatchQueue.main.asyncAfter(deadline: .now() + r) {
+                view.stopAnimation()
+                print("stopped at \(r) s")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                    view.startAnimation()
+                    print("restarted")
+                }
+            }
         }
         var remaining = shots.count
         for (i, s) in shots.enumerated() {

@@ -29,17 +29,30 @@ final class SharedWorld {
         controller.start()
     }
 
-    /// Returns the running world, starting it if needed. Balance with `release()`.
-    static func acquire() -> SharedWorld? {
+    private static var waiters: [(SharedWorld) -> Void] = []
+
+    /// Hands the running world to `done` (main thread), loading it in the background first if
+    /// needed, so the screen does not freeze while the 13 MB file is read. Balance with `release()`.
+    static func acquire(_ done: @escaping (SharedWorld) -> Void) {
         if let c = current {
             c.users += 1
-            return c
+            done(c)
+            return
         }
-        guard let world = loadWorld() else { return nil }
-        let s = SharedWorld(world: world)
-        s.users = 1
-        current = s
-        return s
+        waiters.append(done)
+        guard waiters.count == 1 else { return }  // a load is already under way
+        let box = WorldBox()
+        DispatchQueue.global(qos: .userInitiated).async {
+            box.world = loadWorld()
+            DispatchQueue.main.async {
+                let s = SharedWorld(world: box.world!)
+                current = s
+                let ws = waiters
+                waiters.removeAll()
+                s.users = ws.count
+                for w in ws { w(s) }
+            }
+        }
     }
 
     func release() {
@@ -50,7 +63,10 @@ final class SharedWorld {
         if SharedWorld.current === self { SharedWorld.current = nil }
     }
 
-    private static func loadWorld() -> World? {
+    /// Carries the freshly loaded world from the loading queue to the main thread.
+    private final class WorldBox: @unchecked Sendable { var world: World? }
+
+    private static func loadWorld() -> World {
         let url = worldURLOverride
             ?? Bundle(for: SharedWorld.self).url(forResource: "showcase", withExtension: "hkw")
         if let url {
