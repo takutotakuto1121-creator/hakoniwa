@@ -10,6 +10,7 @@
 | `hakoniwa-cli` | ヘッドレス実行。進化の検証、ベンチマーク、事前進化した世界の生成 |
 | `Hakoniwa` | macOS アプリ。Metal 描画と SwiftUI の UI |
 | `HakoniwaCoreTests` | XCTest |
+| `HakoniwaSaver` | スクリーンセーバー(`Sources/HakoniwaSaver`)。SwiftPM のターゲットではなく、`scripts/build-saver.sh` が swiftc で HakoniwaCore とアプリの `Render/`・`SimulationController` をまとめて `.saver` にする |
 
 外部依存はなく、Apple 標準フレームワーク(Foundation, simd, Metal, MetalKit, SwiftUI, Charts, AVFoundation)のみ。
 
